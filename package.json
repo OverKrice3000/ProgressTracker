@@ -1,0 +1,32 @@
+{
+  "name": "progress-tracker",
+  "version": "0.1.0",
+  "description": "Hierarchical task and time tracker monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run start:api\" \"npm run start:web\"",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "start:api": "npm run start:dev --workspace @progress-tracker/api",
+    "start:api:prod": "npm run start:prod --workspace @progress-tracker/api",
+    "start:web": "npm run start --workspace @progress-tracker/web",
+    "start:web:ssr": "npm run serve:ssr:webapp --workspace @progress-tracker/web",
+    "db:generate": "npm run prisma:generate --workspace @progress-tracker/api",
+    "db:migrate": "npm run prisma:migrate --workspace @progress-tracker/api",
+    "db:deploy": "npm run prisma:deploy --workspace @progress-tracker/api",
+    "db:studio": "npm exec --workspace @progress-tracker/api prisma studio",
+    "user:create": "node ./scripts/create-user.mjs"
+  },
+  "dependencies": {
+    "@progress-tracker/contracts": "file:packages/contracts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.2"
+  },
+  "private": true
+}

@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TrackerType {
+  BOOLEAN
+  NUMBER
+  TIME
+  SUBTASK
+}
+
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  passwordHash String        @map("password_hash")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  tasks        Task[]
+  progressLogs ProgressLog[]
+
+  @@map("users")
+}
+
+model Task {
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  parentId        String?       @map("parent_id")
+  depth           Int           @default(0)
+  name            String
+  description     String?
+  avatarUrl       String?       @map("avatar_url")
+  isCompleted     Boolean       @default(false) @map("is_completed")
+  trackerType     TrackerType   @map("tracker_type")
+  trackerMetadata Json          @default("{}") @map("tracker_metadata")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent          Task?         @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Task[]        @relation("TaskHierarchy")
+  progressLogs    ProgressLog[]
+
+  @@index([userId])
+  @@index([parentId])
+  @@index([trackerType])
+  @@index([depth])
+  @@map("tasks")
+}
+
+model ProgressLog {
+  id              String   @id @default(uuid())
+  taskId          String   @map("task_id")
+  userId          String   @map("user_id")
+  timestamp       DateTime @default(now())
+  timeSpentMinutes Int     @map("time_spent_minutes")
+  snapshot        Json
+  createdAt       DateTime @default(now()) @map("created_at")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("progress_logs")
+}
