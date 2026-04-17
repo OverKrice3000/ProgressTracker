@@ -1,77 +1,112 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TrackerType } from '@progress-tracker/contracts';
+import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { TaskBase } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
+import { AppInputComponent } from '../../shared/ui/input/app-input.component';
 import { TaskListViewComponent } from '../../widgets/task-list-view/ui/task-list-view.component';
 
 @Component({
   selector: 'app-tasks-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, TaskListViewComponent],
+  imports: [CommonModule, ReactiveFormsModule, TaskListViewComponent, AppButtonComponent, AppInputComponent],
   template: `
-    <section class="page">
-      <h1>Tasks</h1>
-      <div class="controls">
-        <label>
+    <section class="mx-auto w-full max-w-6xl space-y-4 p-4">
+      <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <h1 class="mb-3 text-2xl font-semibold text-slate-900">Tasks</h1>
+        <div class="grid gap-3 md:grid-cols-5">
+          <label class="flex items-center gap-2 text-sm">
           Root only
           <input type="checkbox" [checked]="rootOnly()" (change)="toggleRootOnly($event)" />
         </label>
-        <label>
+          <label class="flex flex-col gap-1 text-sm">
           Completion
-          <select [value]="completionFilter()" (change)="setCompletionFilter($event)">
+          <select
+            [value]="completionFilter()"
+            (change)="setCompletionFilter($event)"
+            class="rounded border border-slate-300 p-2"
+          >
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
           </select>
         </label>
-        <label>
+          <label class="flex flex-col gap-1 text-sm">
           Tracker type
-          <select [value]="trackerFilter()" (change)="setTrackerFilter($event)">
+          <select
+            [value]="trackerFilter()"
+            (change)="setTrackerFilter($event)"
+            class="rounded border border-slate-300 p-2"
+          >
             <option value="">All</option>
             <option *ngFor="let type of trackerTypes" [value]="type">{{ type }}</option>
           </select>
         </label>
-        <label>
+          <label class="flex flex-col gap-1 text-sm">
           Sort by
-          <select [value]="sortBy()" (change)="setSortBy($event)">
+          <select [value]="sortBy()" (change)="setSortBy($event)" class="rounded border border-slate-300 p-2">
             <option value="name">Alphabetic</option>
             <option value="trackerType">Type</option>
             <option value="depth">Depth</option>
           </select>
         </label>
-        <button (click)="toggleSortOrder()">{{ sortOrder().toUpperCase() }}</button>
+          <app-button appearance="outline-grayscale" (click)="toggleSortOrder()">
+            {{ sortOrder().toUpperCase() }}
+          </app-button>
+        </div>
       </div>
 
-      <button (click)="openCreateModal()">Create task</button>
+      <app-button (click)="openCreateModal()">Create task</app-button>
       <app-task-list-view [tasks]="tasks()" (createChild)="openCreateModal($event)" />
 
-      <dialog [open]="showCreateModal()">
-        <form [formGroup]="createForm" (ngSubmit)="createTask()">
-          <h3>Create task</h3>
-          <label>Name <input formControlName="name" /></label>
-          <label>Description <textarea formControlName="description"></textarea></label>
-          <label>
+      <ng-template #createTaskDialog let-context>
+        <form [formGroup]="createForm" (ngSubmit)="createTask(context)" class="grid gap-4">
+          <h3 class="text-lg font-semibold">Create task</h3>
+
+          <app-input label="Name" [control]="createForm.controls.name" error="Name is required" />
+
+          <label class="grid gap-1 text-sm">
+            Description
+            <textarea formControlName="description" class="min-h-20 rounded border border-slate-300 p-2"></textarea>
+          </label>
+
+          <label class="grid gap-1 text-sm">
             Tracker type
-            <select formControlName="trackerType">
+            <select formControlName="trackerType" class="rounded border border-slate-300 p-2">
               <option *ngFor="let type of trackerTypes" [value]="type">{{ type }}</option>
             </select>
           </label>
-          <label>Current <input type="number" formControlName="current" /></label>
-          <label>Total <input type="number" formControlName="total" /></label>
-          <div>
-            <button type="submit">Save</button>
-            <button type="button" (click)="closeCreateModal()">Cancel</button>
+
+          <div class="grid gap-2 md:grid-cols-2">
+            <label class="grid gap-1 text-sm">
+              Current
+              <input type="number" formControlName="current" class="rounded border border-slate-300 p-2" />
+            </label>
+            <label class="grid gap-1 text-sm">
+              Total
+              <input type="number" formControlName="total" class="rounded border border-slate-300 p-2" />
+            </label>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <app-button appearance="outline-grayscale" type="button" (click)="context.completeWith()">
+              Cancel
+            </app-button>
+            <app-button type="submit">Save</app-button>
           </div>
         </form>
-      </dialog>
+      </ng-template>
     </section>
   `,
 })
 export class TasksPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly dialogs = inject(TuiDialogService);
+  @ViewChild('createTaskDialog') private createTaskDialog?: TemplateRef<unknown>;
 
   readonly trackerTypes = Object.values(TrackerType);
   readonly tasks = signal<TaskBase[]>([]);
@@ -80,8 +115,6 @@ export class TasksPage implements OnInit {
   readonly trackerFilter = signal<string>('');
   readonly sortBy = signal<'name' | 'trackerType' | 'depth'>('name');
   readonly sortOrder = signal<'asc' | 'desc'>('asc');
-
-  readonly showCreateModal = signal(false);
   readonly selectedParent = signal<TaskBase | null>(null);
 
   readonly createForm = this.fb.nonNullable.group({
@@ -124,15 +157,15 @@ export class TasksPage implements OnInit {
 
   openCreateModal(parent: TaskBase | null = null): void {
     this.selectedParent.set(parent);
-    this.showCreateModal.set(true);
+    if (!this.createTaskDialog) {
+      return;
+    }
+    this.dialogs.open(this.createTaskDialog, { label: 'Create task' }).subscribe(() => {
+      this.selectedParent.set(null);
+    });
   }
 
-  closeCreateModal(): void {
-    this.showCreateModal.set(false);
-    this.selectedParent.set(null);
-  }
-
-  createTask(): void {
+  createTask(context: { completeWith: (value?: unknown) => void }): void {
     if (this.createForm.invalid) {
       return;
     }
@@ -149,7 +182,7 @@ export class TasksPage implements OnInit {
         trackerMetadata,
       })
       .subscribe(() => {
-        this.closeCreateModal();
+        context.completeWith();
         this.createForm.patchValue({ name: '', description: '' });
         this.loadTasks();
       });
