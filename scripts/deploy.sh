@@ -11,6 +11,33 @@ run_as_root() {
   fi
 }
 
+ensure_node_and_npm() {
+  if command -v npm >/dev/null 2>&1; then
+    return
+  fi
+
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+  if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
+    # shellcheck disable=SC1090
+    . "${NVM_DIR}/nvm.sh"
+    nvm use --silent default >/dev/null 2>&1 || true
+  fi
+
+  if ! command -v npm >/dev/null 2>&1 && [[ -d "${NVM_DIR}/versions/node" ]]; then
+    latest_node_dir="$(ls -1 "${NVM_DIR}/versions/node" | sort -V | tail -n 1 || true)"
+    if [[ -n "${latest_node_dir}" ]]; then
+      export PATH="${NVM_DIR}/versions/node/${latest_node_dir}/bin:${PATH}"
+    fi
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "[deploy] npm not found in PATH."
+    echo "[deploy] Ensure Node.js is installed or nvm is initialized for non-interactive shells."
+    exit 1
+  fi
+}
+
 parse_database_host_port() {
   local no_proto
   local authority_and_path
@@ -79,6 +106,8 @@ SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME:-progress_tracker_session}"
 EOF
 
 ensure_postgresql_local
+
+ensure_node_and_npm
 
 echo "[deploy] Installing dependencies"
 npm ci
