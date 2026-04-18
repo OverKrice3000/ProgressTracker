@@ -125,6 +125,11 @@ if [[ ! -d "${WEB_DIST_DIR}" ]]; then
   exit 1
 fi
 
+if [[ ! -f "${WEB_DIST_DIR}/index.html" && -f "${WEB_DIST_DIR}/index.csr.html" ]]; then
+  echo "[deploy] index.html not found, using index.csr.html for static hosting fallback"
+  cp "${WEB_DIST_DIR}/index.csr.html" "${WEB_DIST_DIR}/index.html"
+fi
+
 NGINX_DIR="${NGINX_DIR:-/var/www/progress-tracker}"
 echo "[deploy] Publishing static files to ${NGINX_DIR}"
 run_as_root mkdir -p "${NGINX_DIR}"
