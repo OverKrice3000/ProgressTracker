@@ -129,5 +129,9 @@ NGINX_DIR="${NGINX_DIR:-/var/www/progress-tracker}"
 echo "[deploy] Publishing static files to ${NGINX_DIR}"
 run_as_root mkdir -p "${NGINX_DIR}"
 run_as_root rsync -a --delete "${WEB_DIST_DIR}/" "${NGINX_DIR}/"
+echo "[deploy] Applying nginx-friendly permissions on ${NGINX_DIR}"
+run_as_root chown -R www-data:www-data "${NGINX_DIR}"
+run_as_root find "${NGINX_DIR}" -type d -exec chmod 755 {} \;
+run_as_root find "${NGINX_DIR}" -type f -exec chmod 644 {} \;
 
 echo "[deploy] Deployment complete"
