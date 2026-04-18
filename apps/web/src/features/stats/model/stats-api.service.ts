@@ -18,7 +18,7 @@ export class StatsApiService {
       .set('to', to)
       .set('idleHours', String(idleHours));
 
-    return this.http.get<StatsResponse>('/api/stats', {
+    return this.http.get<StatsResponse>('api/stats', {
       params,
       withCredentials: true,
     });

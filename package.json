@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"npm run start:api\" \"npm run start:web\"",
     "build": "npm run build --workspaces",
+    "build:web": "npm run build --workspace @progress-tracker/web",
+    "build:web:hosted": "npm run build:hosted --workspace @progress-tracker/web",
+    "build:deploy": "npm run build:web:hosted && npm run build --workspace @progress-tracker/api && npm run build --workspace @progress-tracker/contracts",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "start:api": "npm run start:dev --workspace @progress-tracker/api",
@@ -19,6 +22,7 @@
     "db:migrate": "npm run prisma:migrate --workspace @progress-tracker/api",
     "db:deploy": "npm run prisma:deploy --workspace @progress-tracker/api",
     "db:studio": "npm exec --workspace @progress-tracker/api prisma studio",
+    "db:tunnel": "bash ./scripts/db-tunnel.sh",
     "user:create": "node ./scripts/create-user.mjs"
   },
   "dependencies": {

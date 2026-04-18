@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
+    "build:hosted": "ng build --base-href /progress-tracker/ --deploy-url /progress-tracker/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:webapp": "node dist/webapp/server/server.mjs"

@@ -20,22 +20,22 @@ export class TasksApiService {
       params = params.set('trackerType', filters.trackerType);
     }
 
-    return this.http.get<TaskBase[]>('/api/tasks', { params, withCredentials: true });
+    return this.http.get<TaskBase[]>('api/tasks', { params, withCredentials: true });
   }
 
   getTask(taskId: string): Observable<TaskBase> {
-    return this.http.get<TaskBase>(`/api/tasks/${taskId}`, { withCredentials: true });
+    return this.http.get<TaskBase>(`api/tasks/${taskId}`, { withCredentials: true });
   }
 
   getTree(): Observable<TaskTreeNode[]> {
-    return this.http.get<TaskTreeNode[]>('/api/tasks/tree', { withCredentials: true });
+    return this.http.get<TaskTreeNode[]>('api/tasks/tree', { withCredentials: true });
   }
 
   create(payload: Partial<TaskBase>): Observable<TaskBase> {
-    return this.http.post<TaskBase>('/api/tasks', payload, { withCredentials: true });
+    return this.http.post<TaskBase>('api/tasks', payload, { withCredentials: true });
   }
 
   addLog(taskId: string, payload: { timeSpentMinutes: number; trackerMetadata: Record<string, unknown> }) {
-    return this.http.post(`/api/tasks/${taskId}/logs`, payload, { withCredentials: true });
+    return this.http.post(`api/tasks/${taskId}/logs`, payload, { withCredentials: true });
   }
 }

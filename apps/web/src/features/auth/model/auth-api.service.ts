@@ -16,7 +16,7 @@ export class AuthApiService {
       return of(null);
     }
     return this.http
-      .get<AuthUser>('/api/auth/me', { withCredentials: true })
+      .get<AuthUser>('api/auth/me', { withCredentials: true })
       .pipe(
         tap((user) => this.userStore.setUser(user)),
         catchError(() => {
@@ -29,7 +29,7 @@ export class AuthApiService {
   login(username: string, password: string): Observable<AuthUser> {
     return this.http
       .post<AuthUser>(
-        '/api/auth/login',
+        'api/auth/login',
         { username, password },
         { withCredentials: true },
       )
@@ -37,7 +37,7 @@ export class AuthApiService {
   }
 
   logout(): Observable<void> {
-    return this.http.post<{ ok: true }>('/api/auth/logout', {}, { withCredentials: true }).pipe(
+    return this.http.post<{ ok: true }>('api/auth/logout', {}, { withCredentials: true }).pipe(
       tap(() => this.userStore.clear()),
       map(() => undefined),
     );

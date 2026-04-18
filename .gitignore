@@ -13,3 +13,5 @@ apps/**/dist
 apps/**/.angular
 apps/**/.cache
 packages/**/dist
+
+/apps/api/.env
