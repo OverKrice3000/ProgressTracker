@@ -28,7 +28,9 @@ import { AppInputComponent } from '../../shared/ui/input/app-input.component';
           [control]="form.controls.password"
           error="Password is required"
         />
-        <app-button [loading]="loading()" [disabled]="form.invalid" class="w-full">Sign in</app-button>
+        <app-button type="submit" [loading]="loading()" [disabled]="form.invalid" class="w-full">
+          Sign in
+        </app-button>
       </form>
 
       <p *ngIf="error()" class="mt-3 text-sm text-rose-600">{{ error() }}</p>

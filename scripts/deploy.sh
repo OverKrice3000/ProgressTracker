@@ -89,6 +89,37 @@ ensure_postgresql_local() {
   echo "[deploy] PostgreSQL is up and listening on ${DB_HOST}:${DB_PORT}"
 }
 
+ensure_pm2() {
+  if command -v pm2 >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "[deploy] pm2 not found, installing globally"
+  npm install -g pm2
+}
+
+run_api_with_pm2() {
+  local app_name api_cwd api_entry
+
+  app_name="${PM2_APP_NAME:-progress-tracker-api}"
+  api_cwd="${PWD}/apps/api"
+  api_entry="${api_cwd}/dist/main.js"
+
+  if [[ ! -f "${api_entry}" ]]; then
+    echo "[deploy] API entry not found: ${api_entry}"
+    exit 1
+  fi
+
+  echo "[deploy] Starting API with PM2 (app: ${app_name})"
+  if pm2 describe "${app_name}" >/dev/null 2>&1; then
+    pm2 restart "${app_name}" --update-env
+  else
+    pm2 start "${api_entry}" --name "${app_name}" --cwd "${api_cwd}" --time
+  fi
+
+  pm2 save
+}
+
 if [[ ! -f "package.json" ]]; then
   echo "[deploy] package.json not found. Run this script from repository root."
   exit 1
@@ -138,5 +169,8 @@ echo "[deploy] Applying nginx-friendly permissions on ${NGINX_DIR}"
 run_as_root chown -R www-data:www-data "${NGINX_DIR}"
 run_as_root find "${NGINX_DIR}" -type d -exec chmod 755 {} \;
 run_as_root find "${NGINX_DIR}" -type f -exec chmod 644 {} \;
+
+ensure_pm2
+run_api_with_pm2
 
 echo "[deploy] Deployment complete"
