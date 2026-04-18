@@ -7,8 +7,9 @@ export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSummary(userId: string, query: StatsQueryDto) {
-    const from = new Date(query.from);
-    const to = new Date(query.to);
+    const from = this.startOfLocalDay(query.from);
+    const toExclusive = this.startOfLocalDay(query.to);
+    toExclusive.setDate(toExclusive.getDate() + 1);
     const idleMinutes = (query.idleHours ?? 0) * 60;
 
     const logs = await this.prisma.progressLog.findMany({
@@ -16,7 +17,7 @@ export class StatsService {
         userId,
         timestamp: {
           gte: from,
-          lte: to,
+          lt: toExclusive,
         },
       },
       include: {
@@ -40,13 +41,13 @@ export class StatsService {
 
     const days = Math.max(
       1,
-      Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      Math.ceil((toExclusive.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)),
     );
     const availableMinutes = days * 24 * 60;
     const untrackedMinutes = Math.max(0, availableMinutes - totalLoggedMinutes - idleMinutes);
 
     return {
-      range: { from, to, days },
+      range: { from, to: new Date(toExclusive.getTime() - 1), days },
       totals: {
         loggedMinutes: totalLoggedMinutes,
         idleMinutes,
@@ -55,5 +56,10 @@ export class StatsService {
       byTask: Array.from(byTask.values()).sort((a, b) => b.minutes - a.minutes),
       logs,
     };
+  }
+
+  private startOfLocalDay(value: string): Date {
+    const [year, month, day] = value.split('-').map((part) => Number(part));
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
   }
 }

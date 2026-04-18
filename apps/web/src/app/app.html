@@ -1,5 +1,7 @@
 <tui-root>
-  <main class="app-shell min-h-screen">
-    <router-outlet />
-  </main>
+  @if (userStore.isReady()) {
+    <main class="app-shell min-h-screen">
+      <router-outlet />
+    </main>
+  }
 </tui-root>

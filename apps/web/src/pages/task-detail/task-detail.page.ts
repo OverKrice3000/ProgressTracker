@@ -4,8 +4,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
+import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
+import { switchMap } from 'rxjs';
 import { TaskBase } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import {
+  CreateTaskDialogComponent,
+  CreateTaskDialogData,
+} from '../../features/tasks/ui/create-task-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { AppInputComponent } from '../../shared/ui/input/app-input.component';
 import { TaskStatusBadgeComponent } from '../../entities/task/ui/task-status-badge.component';
@@ -44,13 +50,25 @@ import { TaskStatusBadgeComponent } from '../../entities/task/ui/task-status-bad
         </p>
       </ng-container>
 
-      <app-button class="mt-4" (click)="openLogModal()" [disabled]="currentTask.isCompleted">
-        Add progress log
-      </app-button>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <app-button
+          *ngIf="currentTask.trackerType === trackerType.SUBTASK"
+          (click)="openCreateChildModal()"
+          [disabled]="currentTask.isCompleted"
+        >
+          Create child
+        </app-button>
+        <app-button
+          *ngIf="currentTask.trackerType !== trackerType.SUBTASK"
+          (click)="openLogModal()"
+          [disabled]="currentTask.isCompleted"
+        >
+          Add progress log
+        </app-button>
+      </div>
 
-      <ng-template #logDialog let-context>
-        <form [formGroup]="logForm" (ngSubmit)="submitLog(currentTask, context)" class="grid gap-3">
-          <h3 class="text-lg font-semibold">Add log entry</h3>
+      <ng-template #logDialog let-completeWith="completeWith">
+        <form [formGroup]="logForm" (ngSubmit)="submitLog(currentTask, completeWith)" class="grid gap-3">
           <app-input
             label="Time spent (minutes)"
             type="number"
@@ -64,7 +82,7 @@ import { TaskStatusBadgeComponent } from '../../entities/task/ui/task-status-bad
             error="Progress value is required"
           />
           <div class="flex justify-end gap-2">
-            <app-button appearance="outline-grayscale" type="button" (click)="context.completeWith()">
+            <app-button appearance="outline-grayscale" type="button" (click)="completeWith()">
               Cancel
             </app-button>
             <app-button type="submit" [disabled]="currentTask.isCompleted">Submit</app-button>
@@ -110,24 +128,47 @@ export class TaskDetailPage implements OnInit {
     }
   }
 
+  openCreateChildModal(): void {
+    const t = this.task();
+    if (!t || t.trackerType !== TrackerType.SUBTASK || t.isCompleted) {
+      return;
+    }
+    const data: CreateTaskDialogData = {
+      parent: t,
+      onSuccess: () => this.tasksApi.getTask(t.id).subscribe((fresh) => this.task.set(fresh)),
+    };
+    this.dialogs.open(new PolymorpheusComponent(CreateTaskDialogComponent), {
+      label: 'Create task',
+      data,
+    }).subscribe();
+  }
+
   openLogModal(): void {
-    if (!this.logDialog) {
+    const t = this.task();
+    if (!this.logDialog || !t || t.trackerType === TrackerType.SUBTASK) {
       return;
     }
     this.dialogs.open(this.logDialog, { label: 'Add progress log' }).subscribe();
   }
 
-  submitLog(task: TaskBase, context: { completeWith: (value?: unknown) => void }): void {
-    if (this.logForm.invalid || task.isCompleted) {
+  submitLog(task: TaskBase, completeWith: (value?: unknown) => void): void {
+    if (this.logForm.invalid || task.isCompleted || task.trackerType === TrackerType.SUBTASK) {
       return;
     }
-    const { timeSpentMinutes, progressValue } = this.logForm.getRawValue();
+    const raw = this.logForm.getRawValue();
+    const timeSpentMinutes = Number(raw.timeSpentMinutes);
+    const progressValue = Number(raw.progressValue);
     const trackerMetadata = this.buildLogMetadata(task, progressValue);
 
     this.tasksApi
       .addLog(task.id, { timeSpentMinutes, trackerMetadata })
-      .subscribe(() => this.tasksApi.getTask(task.id).subscribe((fresh) => this.task.set(fresh)));
-    context.completeWith();
+      .pipe(switchMap(() => this.tasksApi.getTask(task.id)))
+      .subscribe({
+        next: (fresh) => {
+          this.task.set(fresh);
+          completeWith();
+        },
+      });
   }
 
   private buildLogMetadata(task: TaskBase, progressValue: number): Record<string, unknown> {

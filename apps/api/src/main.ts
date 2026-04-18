@@ -7,6 +7,7 @@ import { AuthService } from './modules/auth/auth.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix(process.env.API_PREFIX ?? 'api');
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
