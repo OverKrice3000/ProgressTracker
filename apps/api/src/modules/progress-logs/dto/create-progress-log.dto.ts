@@ -14,4 +14,13 @@ export class CreateProgressLogDto {
 
   @IsObject()
   trackerMetadata!: Record<string, unknown>;
+
+  /** Optional [dayStart, dayEnd) ISO bounds for the selected calendar day; used to enforce 24h daily cap. */
+  @IsOptional()
+  @IsString()
+  dayStartIso?: string;
+
+  @IsOptional()
+  @IsString()
+  dayEndIso?: string;
 }

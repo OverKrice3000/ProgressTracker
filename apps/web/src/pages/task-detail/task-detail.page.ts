@@ -28,7 +28,9 @@ import {
   ConfirmActionDialogComponent,
   ConfirmActionDialogData,
 } from '../../shared/ui/modal/confirm-action-dialog.component';
+import { ProgressLogsApiService } from '../../features/progress-logs/model/progress-logs-api.service';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
+import { formatYmdAsReadable, getLocalDayRangeIso, localNoonIsoForYmd } from '../../shared/lib/local-day-bounds';
 import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
 @Component({
@@ -147,6 +149,11 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
       <ng-template #logDialog let-completeWith="completeWith">
         <form [formGroup]="logForm" (ngSubmit)="submitLog(currentTask, completeWith)" class="grid gap-4">
+          <label class="grid gap-2 text-sm">
+            <span class="font-medium text-slate-800">Date</span>
+            <input type="date" formControlName="logDate" class="rounded border border-slate-300 p-2" />
+          </label>
+
           <div class="grid gap-2 text-sm">
             <span class="font-medium text-slate-800">Time spent (this session)</span>
             <div class="grid grid-cols-2 gap-3">
@@ -221,6 +228,14 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
             </label>
           </ng-container>
 
+          <p
+            *ngIf="logDailyLine() as line"
+            class="text-sm"
+            [class.text-rose-600]="line.kind === 'error'"
+            [class.text-slate-600]="line.kind === 'info'"
+          >
+            {{ line.text }}
+          </p>
           <p *ngIf="logProgressError()" class="text-sm text-rose-600">{{ logProgressError() }}</p>
 
           <div class="flex items-center justify-between gap-2">
@@ -251,6 +266,7 @@ export class TaskDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tasksApi = inject(TasksApiService);
+  private readonly progressLogsApi = inject(ProgressLogsApiService);
   private readonly trackingStore = inject(TaskTrackingStore);
   private readonly fb = inject(FormBuilder);
   private readonly dialogs = inject(TuiDialogService);
@@ -263,10 +279,17 @@ export class TaskDetailPage implements OnInit {
   /** Expanded folder ids in the subtasks list (same behavior as the Tasks page hierarchy). */
   readonly subtaskExpandedFolderIds = signal<Set<string>>(new Set());
   readonly logProgressError = signal<string | null>(null);
+  /** Daily 24h budget line (info or error); separate from tracker validation. */
+  readonly logDailyLine = signal<{ kind: 'info' | 'error'; text: string } | null>(null);
+  readonly logDayAlreadyLogged = signal<number | null>(null);
+  readonly logDayLoading = signal(false);
+  /** When editing an existing log, exclude it from the daily sum (Task 4). */
+  private readonly editingLogId = signal<string | null>(null);
   readonly activeTrackingTaskId = computed(() => this.trackingStore.currentSession()?.taskId ?? null);
   private pendingStopTrackingForTaskId: string | null = null;
 
   readonly logForm = this.fb.nonNullable.group({
+    logDate: ['', [Validators.required]],
     timeSpentHours: [0, [Validators.min(0)]],
     timeSpentMinutes: [0, [Validators.min(0), Validators.max(59)]],
     newCurrentNumber: [0],
@@ -280,9 +303,18 @@ export class TaskDetailPage implements OnInit {
     this.logForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       const t = this.task();
       if (t && t.trackerType !== TrackerType.SUBTASK) {
-        this.logProgressError.set(this.computeProgressValidationError(t));
+        this.recomputeLogModalState(t);
       }
     });
+    this.logForm
+      .get('logDate')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const t = this.task();
+        if (t && t.trackerType !== TrackerType.SUBTASK && !t.isHidden) {
+          this.refetchDailyTotalForLogModal();
+        }
+      });
     this.route.paramMap
       .pipe(
         map((params) => params.get('id')),
@@ -295,6 +327,7 @@ export class TaskDetailPage implements OnInit {
         this.subtaskTree.set([]);
         this.subtaskExpandedFolderIds.set(new Set());
         this.logForm.reset({
+          logDate: this.todayYmd(),
           timeSpentHours: 0,
           timeSpentMinutes: 0,
           newCurrentNumber: 0,
@@ -303,6 +336,9 @@ export class TaskDetailPage implements OnInit {
           markComplete: false,
         });
         this.logProgressError.set(null);
+        this.logDailyLine.set(null);
+        this.logDayAlreadyLogged.set(null);
+        this.editingLogId.set(null);
         this.loadTask(taskId);
         this.loadSubtaskTree(taskId);
       });
@@ -335,18 +371,63 @@ export class TaskDetailPage implements OnInit {
     if (task.isCompleted) {
       return true;
     }
-    return this.computeProgressValidationError(task) !== null;
+    if (this.logDayLoading()) {
+      return true;
+    }
+    if (this.logDayAlreadyLogged() === null) {
+      return true;
+    }
+    if (this.logDailyLine()?.kind === 'error') {
+      return true;
+    }
+    return this.logProgressError() !== null;
   }
 
-  private computeProgressValidationError(task: TaskBase): string | null {
+  private recomputeLogModalState(task: TaskBase): void {
     const raw = this.logForm.getRawValue();
     const timeSpent = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
+    let trackerErr: string | null = null;
     if (timeSpent < 1) {
-      return 'Minimum 1 minute required to log progress.';
+      trackerErr = 'Minimum 1 minute required to log progress.';
+    } else if (timeSpent > 1440) {
+      trackerErr = 'Time spent cannot exceed 1440 minutes.';
+    } else {
+      trackerErr = this.computeTrackerValidationError(task, raw);
     }
-    if (timeSpent > 1440) {
-      return 'Time spent cannot exceed 1440 minutes.';
+    this.logProgressError.set(trackerErr);
+
+    const already = this.logDayAlreadyLogged();
+    const ymd = raw.logDate;
+    if (already === null || !ymd) {
+      this.logDailyLine.set(null);
+      return;
     }
+    const remaining = 1440 - already;
+    if (timeSpent > remaining) {
+      this.logDailyLine.set({
+        kind: 'error',
+        text: 'Error: Total time for this day cannot exceed 24 hours.',
+      });
+      return;
+    }
+    const label = formatYmdAsReadable(ymd);
+    const rh = Math.floor(remaining / 60);
+    const rm = remaining % 60;
+    this.logDailyLine.set({
+      kind: 'info',
+      text: `Available for ${label}: ${rh}h ${rm}m remaining.`,
+    });
+  }
+
+  private computeTrackerValidationError(
+    task: TaskBase,
+    raw: {
+      newCurrentNumber: number;
+      newCurrentHours: number;
+      newCurrentMinutes: number;
+      markComplete: boolean;
+    },
+  ): string | null {
     const m = task.trackerMetadata as Record<string, unknown>;
     if (task.trackerType === TrackerType.NUMBER) {
       const next = Number(raw.newCurrentNumber);
@@ -376,6 +457,39 @@ export class TaskDetailPage implements OnInit {
       }
     }
     return null;
+  }
+
+  private todayYmd(): string {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }
+
+  private refetchDailyTotalForLogModal(): void {
+    const task = this.task();
+    if (!task || task.trackerType === TrackerType.SUBTASK || task.isHidden) {
+      return;
+    }
+    const ymd = this.logForm.get('logDate')?.value;
+    if (!ymd || typeof ymd !== 'string') {
+      return;
+    }
+    this.logDayLoading.set(true);
+    this.logDayAlreadyLogged.set(null);
+    this.recomputeLogModalState(task);
+    const { start, end } = getLocalDayRangeIso(ymd);
+    const exclude = this.editingLogId() ?? undefined;
+    this.progressLogsApi.getDailyTotal(start, end, exclude).subscribe({
+      next: (res) => {
+        this.logDayAlreadyLogged.set(res.totalMinutes);
+        this.logDayLoading.set(false);
+        this.recomputeLogModalState(task);
+      },
+      error: () => {
+        this.logDayAlreadyLogged.set(0);
+        this.logDayLoading.set(false);
+        this.recomputeLogModalState(task);
+      },
+    });
   }
 
   openCreateChildModal(): void {
@@ -466,22 +580,38 @@ export class TaskDetailPage implements OnInit {
       });
   }
 
-  openLogModal(prefillElapsedMinutes?: number, stopTrackingAfterSave = false): void {
+  openLogModal(
+    prefillElapsedMinutes?: number,
+    stopTrackingAfterSave = false,
+    edit?: { logId: string; originalMinutes: number; logDateYmd: string },
+  ): void {
     const t = this.task();
     if (!this.logDialog || !t || t.isHidden || t.trackerType === TrackerType.SUBTASK) {
       return;
     }
     this.pendingStopTrackingForTaskId = stopTrackingAfterSave ? t.id : null;
+    this.editingLogId.set(edit?.logId ?? null);
     this.patchLogFormFromTask(t);
-    if (prefillElapsedMinutes && prefillElapsedMinutes > 0) {
+    if (edit) {
+      this.logForm.patchValue({
+        logDate: edit.logDateYmd,
+        timeSpentHours: Math.floor(edit.originalMinutes / 60),
+        timeSpentMinutes: edit.originalMinutes % 60,
+      });
+    }
+    if (prefillElapsedMinutes && prefillElapsedMinutes > 0 && !edit) {
       this.logForm.patchValue({
         timeSpentHours: Math.floor(prefillElapsedMinutes / 60),
         timeSpentMinutes: prefillElapsedMinutes % 60,
       });
     }
-    this.logProgressError.set(this.computeProgressValidationError(t));
+    this.refetchDailyTotalForLogModal();
     this.dialogs.open(this.logDialog, { label: 'Track progress' }).subscribe(() => {
       this.pendingStopTrackingForTaskId = null;
+      this.editingLogId.set(null);
+      this.logDailyLine.set(null);
+      this.logDayAlreadyLogged.set(null);
+      this.logDayLoading.set(false);
     });
   }
 
@@ -564,11 +694,11 @@ export class TaskDetailPage implements OnInit {
   private patchLogFormFromTask(t: TaskBase): void {
     const m = t.trackerMetadata as Record<string, unknown>;
     const { hours: tsH, minutes: tsM } = splitMinutesToHoursMinutes(0);
+    const base = { logDate: this.todayYmd(), timeSpentHours: tsH, timeSpentMinutes: tsM };
     if (t.trackerType === TrackerType.NUMBER) {
       const cur = Number(m['current'] ?? 0);
       this.logForm.patchValue({
-        timeSpentHours: tsH,
-        timeSpentMinutes: tsM,
+        ...base,
         newCurrentNumber: cur,
         newCurrentHours: 0,
         newCurrentMinutes: 0,
@@ -580,8 +710,7 @@ export class TaskDetailPage implements OnInit {
       const curMin = Number(m['currentMinutes'] ?? 0);
       const { hours: nh, minutes: nm } = splitMinutesToHoursMinutes(curMin);
       this.logForm.patchValue({
-        timeSpentHours: tsH,
-        timeSpentMinutes: tsM,
+        ...base,
         newCurrentNumber: 0,
         newCurrentHours: nh,
         newCurrentMinutes: nm,
@@ -591,8 +720,7 @@ export class TaskDetailPage implements OnInit {
     }
     if (t.trackerType === TrackerType.BOOLEAN) {
       this.logForm.patchValue({
-        timeSpentHours: tsH,
-        timeSpentMinutes: tsM,
+        ...base,
         newCurrentNumber: 0,
         newCurrentHours: 0,
         newCurrentMinutes: 0,
@@ -605,12 +733,13 @@ export class TaskDetailPage implements OnInit {
     if (task.isHidden || task.isCompleted || task.trackerType === TrackerType.SUBTASK) {
       return;
     }
-    const err = this.computeProgressValidationError(task);
-    if (err !== null) {
-      this.logProgressError.set(err);
+    this.recomputeLogModalState(task);
+    if (this.logSubmitDisabled(task)) {
       return;
     }
     const raw = this.logForm.getRawValue();
+    const ymd = raw.logDate;
+    const { start, end } = getLocalDayRangeIso(ymd);
     const shouldStopTracking = this.pendingStopTrackingForTaskId === task.id;
     const timeSpentMinutes = shouldStopTracking
       ? this.trackingStore.elapsedMinutes()
@@ -626,7 +755,13 @@ export class TaskDetailPage implements OnInit {
     const trackerMetadata = this.buildLogMetadata(task, progressValue);
 
     this.tasksApi
-      .addLog(task.id, { timeSpentMinutes, trackerMetadata })
+      .addLog(task.id, {
+        timeSpentMinutes,
+        trackerMetadata,
+        timestamp: localNoonIsoForYmd(ymd),
+        dayStartIso: start,
+        dayEndIso: end,
+      })
       .pipe(switchMap(() => this.tasksApi.getTask(task.id)))
       .subscribe({
         next: (fresh) => {

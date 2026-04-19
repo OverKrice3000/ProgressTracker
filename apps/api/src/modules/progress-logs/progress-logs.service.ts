@@ -16,6 +16,14 @@ export class ProgressLogsService {
       throw new BadRequestException('timeSpentMinutes cannot exceed 1440');
     }
 
+    const { dayStartIso, dayEndIso } = dto;
+    if (dayStartIso && dayEndIso) {
+      const { totalMinutes } = await this.getDailyTotalForRange(userId, dayStartIso, dayEndIso);
+      if (totalMinutes + dto.timeSpentMinutes > 1440) {
+        throw new BadRequestException('Total time for this day cannot exceed 24 hours.');
+      }
+    }
+
     const task = await this.tasksService.findById(userId, taskId);
     if (task.isHidden) {
       throw new BadRequestException('Archived task is locked for logging');
@@ -108,5 +116,28 @@ export class ProgressLogsService {
       return children.length > 0 && children.every((child) => child.isCompleted);
     }
     return false;
+  }
+
+  /** Sum of time_spent_minutes for all logs in [dayStart, dayEnd), optionally excluding one log (edit flow). */
+  async getDailyTotalForRange(
+    userId: string,
+    dayStartIso: string,
+    dayEndIso: string,
+    excludeLogId?: string,
+  ): Promise<{ totalMinutes: number }> {
+    const dayStart = new Date(dayStartIso);
+    const dayEnd = new Date(dayEndIso);
+    if (Number.isNaN(dayStart.getTime()) || Number.isNaN(dayEnd.getTime()) || dayEnd <= dayStart) {
+      throw new BadRequestException('Invalid day bounds');
+    }
+    const agg = await this.prisma.progressLog.aggregate({
+      where: {
+        userId,
+        timestamp: { gte: dayStart, lt: dayEnd },
+        ...(excludeLogId ? { id: { not: excludeLogId } } : {}),
+      },
+      _sum: { timeSpentMinutes: true },
+    });
+    return { totalMinutes: agg._sum.timeSpentMinutes ?? 0 };
   }
 }

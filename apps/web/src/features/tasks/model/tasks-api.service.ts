@@ -90,7 +90,16 @@ export class TasksApiService {
     return this.http.patch<TaskBase>(`api/tasks/${taskId}/restore`, {}, { withCredentials: true });
   }
 
-  addLog(taskId: string, payload: { timeSpentMinutes: number; trackerMetadata: Record<string, unknown> }) {
+  addLog(
+    taskId: string,
+    payload: {
+      timeSpentMinutes: number;
+      trackerMetadata: Record<string, unknown>;
+      timestamp?: string;
+      dayStartIso?: string;
+      dayEndIso?: string;
+    },
+  ) {
     return this.http.post(`api/tasks/${taskId}/logs`, payload, { withCredentials: true });
   }
 
