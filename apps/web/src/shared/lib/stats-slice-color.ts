@@ -1,8 +1,8 @@
-/** Shared with the pie chart so table swatches match slice fills exactly. */
+/** Fallback when a slice has no hex fill (stats always passes fillColor). */
 export interface StatsSliceColorInput {
+  fillColor?: string;
   hue?: number;
   shadeIndex?: number;
-  fillColor?: string;
 }
 
 export function colorForStatsSlice(node: StatsSliceColorInput, fallbackIndex: number): string {

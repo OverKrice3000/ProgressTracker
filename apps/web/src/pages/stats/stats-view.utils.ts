@@ -1,6 +1,6 @@
 import { TrackerType } from '@progress-tracker/contracts';
 import { TaskTreeNode } from '../../entities/task/model/task.types';
-import { colorForStatsSlice } from '../../shared/lib/stats-slice-color';
+import { statsColorHexForTaskId } from '../../shared/lib/stats-task-colors';
 
 export const STATS_UNTRACKED_ID = '__untracked__';
 
@@ -36,10 +36,6 @@ export interface StatsPieSlice {
   taskId: string;
   taskName: string;
   minutes: number;
-  hue: number;
-  shadeIndex: number;
-  /** When set, used instead of HSL from hue/shade (e.g. Untracked). */
-  fillColor?: string;
   /** True when this slice is a collapsed folder (SUBTASK with children) — chart treats as interactive. */
   isExpandableFolder: boolean;
 }
@@ -55,33 +51,21 @@ export function buildVisiblePieSlices(
   nodes: TaskTreeNode[],
   expanded: Set<string>,
   byTask: Map<string, number>,
-  options: { rootHueCounter: { n: number }; parentHue?: number } = { rootHueCounter: { n: 0 } },
 ): StatsPieSlice[] {
   const sorted = sortStatsSiblings(nodes, byTask);
   const out: StatsPieSlice[] = [];
-  sorted.forEach((node, idx) => {
+  sorted.forEach((node) => {
     const minutes = rolledUpMinutes(node, byTask);
     const expandable =
       node.trackerType === TrackerType.SUBTASK && node.children.length > 0;
-    const hue =
-      options.parentHue !== undefined
-        ? options.parentHue
-        : (40 + options.rootHueCounter.n++ * 47) % 360;
 
     if (expandable && expanded.has(node.id)) {
-      out.push(
-        ...buildVisiblePieSlices(node.children, expanded, byTask, {
-          rootHueCounter: options.rootHueCounter,
-          parentHue: hue,
-        }),
-      );
+      out.push(...buildVisiblePieSlices(node.children, expanded, byTask));
     } else {
       out.push({
         taskId: node.id,
         taskName: node.name,
         minutes,
-        hue,
-        shadeIndex: options.parentHue !== undefined ? idx : 0,
         isExpandableFolder: expandable,
       });
     }
@@ -102,12 +86,12 @@ export interface StatsTableRow {
   showSliceColor: boolean;
 }
 
-/** Maps each visible task slice to the same CSS color the pie chart uses (by slice order). */
+/** Maps each taskId to the same hex used for the pie slice and table dot (deterministic per id). */
 export function buildTaskSliceColorMap(slices: StatsPieSlice[]): Map<string, string> {
   const map = new Map<string, string>();
-  slices.forEach((sl, i) => {
-    map.set(sl.taskId, colorForStatsSlice(sl, i));
-  });
+  for (const sl of slices) {
+    map.set(sl.taskId, statsColorHexForTaskId(sl.taskId));
+  }
   return map;
 }
 

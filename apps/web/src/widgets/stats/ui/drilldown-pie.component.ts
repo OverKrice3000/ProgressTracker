@@ -15,10 +15,7 @@ export interface PieNode {
   taskId: string;
   taskName: string;
   minutes: number;
-  /** HSL hue for this slice branch; sub-slices share parent hue with different lightness. */
-  hue?: number;
-  shadeIndex?: number;
-  /** When set, overrides HSL (e.g. neutral grey for Untracked). */
+  /** Stats page sets deterministic #hex per taskId; Untracked uses neutral grey. */
   fillColor?: string;
   /** Only folder slices receive hover, tooltip, and pointer cursor (drill-down). */
   isFolderSlice?: boolean;

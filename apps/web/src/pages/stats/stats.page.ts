@@ -9,6 +9,7 @@ import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
 import { TaskTreeNode } from '../../entities/task/model/task.types';
 import { formatDurationMinutes } from '../../shared/lib/format-duration';
 import { STATS_UNTRACKED_SLICE_COLOR } from '../../shared/lib/stats-slice-color';
+import { statsColorHexForTaskId } from '../../shared/lib/stats-task-colors';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import {
   DrilldownPieComponent,
@@ -192,16 +193,12 @@ export class StatsPage implements OnInit {
       return [];
     }
     const map = buildMinutesMap(s.byTask);
-    const slices = buildVisiblePieSlices(tree, expanded, map, { rootHueCounter: { n: 0 } }).filter(
-      (x) => x.minutes > 0,
-    );
+    const slices = buildVisiblePieSlices(tree, expanded, map).filter((x) => x.minutes > 0);
     const out: PieNode[] = slices.map((sl) => ({
       taskId: sl.taskId,
       taskName: sl.taskName,
       minutes: sl.minutes,
-      hue: sl.hue,
-      shadeIndex: sl.shadeIndex,
-      fillColor: sl.fillColor,
+      fillColor: statsColorHexForTaskId(sl.taskId),
       isFolderSlice: sl.isExpandableFolder,
     }));
     if (showU && s.totals.untrackedMinutes > 0) {
@@ -225,9 +222,7 @@ export class StatsPage implements OnInit {
       return [];
     }
     const map = buildMinutesMap(s.byTask);
-    const slices = buildVisiblePieSlices(tree, expanded, map, { rootHueCounter: { n: 0 } }).filter(
-      (x) => x.minutes > 0,
-    );
+    const slices = buildVisiblePieSlices(tree, expanded, map).filter((x) => x.minutes > 0);
     const sliceColors = buildTaskSliceColorMap(slices);
     const rows = buildStatsTableRows(tree, expanded, map, sliceColors, 0);
     if (showU && s.totals.untrackedMinutes > 0) {
