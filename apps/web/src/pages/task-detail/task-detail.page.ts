@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
@@ -29,13 +29,20 @@ import {
 import { TrackProgressDialogComponent } from '../../features/tasks/ui/track-progress-dialog.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import { formatHoursMinutesShort } from '../../shared/lib/format-hours-minutes';
-import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
+import {
+  applyDisplaySort,
+  BreadcrumbAncestor,
+  buildBreadcrumbSegments,
+  findNodeInTree,
+  findPathToTask,
+} from '../tasks/task-tree.utils';
 
 @Component({
   selector: 'app-task-detail-page',
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     AppButtonComponent,
     TaskStatusBadgeComponent,
     TaskActionsMenuComponent,
@@ -46,7 +53,54 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
     <section class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4" *ngIf="task() as currentTask">
       <div class="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
         <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-2">
+          <div class="min-w-0 flex-1 space-y-1">
+            <nav
+              class="text-xs text-slate-500"
+              *ngIf="breadcrumbSegments() as bc"
+              aria-label="Breadcrumb"
+            >
+              <div class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                <a
+                  routerLink="/tasks"
+                  class="shrink-0 rounded-sm hover:text-slate-700 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                >
+                  All Tasks
+                </a>
+                <span class="shrink-0 text-slate-400 select-none" aria-hidden="true">/</span>
+                <ng-container *ngFor="let a of bc.prefix">
+                  <a
+                    [routerLink]="['/task', a.id]"
+                    class="min-w-0 max-w-[min(12rem,100%)] shrink truncate rounded-sm hover:text-slate-700 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                    [title]="a.name"
+                  >
+                    {{ a.name }}
+                  </a>
+                  <span class="shrink-0 text-slate-400 select-none" aria-hidden="true">/</span>
+                </ng-container>
+                <ng-container *ngIf="bc.showEllipsis">
+                  <span class="shrink-0 px-0.5 text-slate-400" aria-hidden="true">…</span>
+                  <span class="shrink-0 text-slate-400 select-none" aria-hidden="true">/</span>
+                </ng-container>
+                <ng-container *ngFor="let a of bc.suffix">
+                  <a
+                    [routerLink]="['/task', a.id]"
+                    class="min-w-0 max-w-[min(12rem,100%)] shrink truncate rounded-sm hover:text-slate-700 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                    [title]="a.name"
+                  >
+                    {{ a.name }}
+                  </a>
+                  <span class="shrink-0 text-slate-400 select-none" aria-hidden="true">/</span>
+                </ng-container>
+                <span
+                  class="min-w-0 truncate font-medium text-slate-800"
+                  [attr.title]="currentTask.name"
+                  aria-current="page"
+                >
+                  {{ currentTask.name }}
+                </span>
+              </div>
+            </nav>
+            <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
             <span
               *ngIf="currentTask.isHidden"
@@ -60,8 +114,9 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
             >
               Tracking
             </span>
+            </div>
           </div>
-          <div class="flex items-center gap-2" *ngIf="!currentTask.isHidden">
+          <div class="flex shrink-0 items-center gap-2" *ngIf="!currentTask.isHidden">
             <app-button appearance="outline-grayscale" size="s" (click)="openEditModal(currentTask)">
               Edit task
             </app-button>
@@ -162,6 +217,10 @@ export class TaskDetailPage implements OnInit {
   readonly subtaskExpandedFolderIds = signal<Set<string>>(new Set());
   readonly activeTrackingTaskId = computed(() => this.trackingStore.currentSession()?.taskId ?? null);
 
+  /** Parent chain from root to parent of current task (excludes current task). */
+  readonly breadcrumbAncestors = signal<BreadcrumbAncestor[]>([]);
+  readonly breadcrumbSegments = computed(() => buildBreadcrumbSegments(this.breadcrumbAncestors()));
+
   ngOnInit(): void {
     this.trackingStore.loadCurrent();
     this.route.paramMap
@@ -175,6 +234,7 @@ export class TaskDetailPage implements OnInit {
         this.task.set(null);
         this.subtaskTree.set([]);
         this.subtaskExpandedFolderIds.set(new Set());
+        this.breadcrumbAncestors.set([]);
         this.loadTask(taskId);
         this.loadSubtaskTree(taskId);
       });
@@ -397,6 +457,13 @@ export class TaskDetailPage implements OnInit {
     this.tasksApi.getTree(includeHidden).subscribe((roots) => {
       const self = findNodeInTree(roots, taskId);
       this.subtaskTree.set(self ? applyDisplaySort(self.children) : []);
+
+      const path = findPathToTask(roots, taskId);
+      const ancestors: BreadcrumbAncestor[] =
+        path && path.length > 1
+          ? path.slice(0, -1).map((n) => ({ id: n.id, name: n.name }))
+          : [];
+      this.breadcrumbAncestors.set(ancestors);
     });
   }
 }

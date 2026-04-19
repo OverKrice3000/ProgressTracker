@@ -16,6 +16,42 @@ export function findNodeInTree(roots: TaskTreeNode[], id: string): TaskTreeNode 
   return null;
 }
 
+/** Path from a root to `targetId` (inclusive). `null` if the task is not in the tree. */
+export function findPathToTask(roots: TaskTreeNode[], targetId: string): TaskTreeNode[] | null {
+  for (const n of roots) {
+    if (n.id === targetId) {
+      return [n];
+    }
+    const sub = findPathToTask(n.children, targetId);
+    if (sub) {
+      return [n, ...sub];
+    }
+  }
+  return null;
+}
+
+export interface BreadcrumbAncestor {
+  id: string;
+  name: string;
+}
+
+/** When there are more than `maxVisible` ancestors, show first `headKeep` and last `tailKeep` with an ellipsis between. */
+export function buildBreadcrumbSegments(
+  ancestors: BreadcrumbAncestor[],
+  maxVisible = 4,
+  headKeep = 2,
+  tailKeep = 2,
+): { prefix: BreadcrumbAncestor[]; showEllipsis: boolean; suffix: BreadcrumbAncestor[] } {
+  if (ancestors.length <= maxVisible) {
+    return { prefix: ancestors, showEllipsis: false, suffix: [] };
+  }
+  return {
+    prefix: ancestors.slice(0, headKeep),
+    showEllipsis: true,
+    suffix: ancestors.slice(-tailKeep),
+  };
+}
+
 export function filterTreeByCompletionAndTracker(
   node: TaskTreeNode,
   completion: 'all' | 'active' | 'completed',
