@@ -230,8 +230,9 @@ export class TasksService {
     taskId: string,
     trackerMetadata: Prisma.InputJsonValue,
     isCompleted: boolean,
+    db: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    await this.prisma.task.update({
+    await db.task.update({
       where: { id: taskId },
       data: {
         trackerMetadata,

@@ -78,4 +78,139 @@ describe('ProgressLogsService', () => {
       true,
     );
   });
+
+  it('recalculateTaskFromLogs applies last log metadata', async () => {
+    const prisma = {
+      task: {
+        findFirst: jest.fn().mockResolvedValue(baseTask),
+      },
+      progressLog: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: '1', appliedTrackerMetadata: { current: 10, total: 100 } },
+          { id: '2', appliedTrackerMetadata: { current: 25, total: 100 } },
+        ]),
+      },
+    };
+    const tasksService = {
+      updateProgressAndCompletion: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await service.recalculateTaskFromLogs('user-1', 'task-1');
+
+    expect(tasksService.updateProgressAndCompletion).toHaveBeenCalledWith(
+      'task-1',
+      { current: 25, total: 100 },
+      false,
+      prisma,
+    );
+  });
+
+  it('recalculateTaskFromLogs resets task when no logs remain', async () => {
+    const task = {
+      ...baseTask,
+      trackerMetadata: { current: 40, total: 100 },
+    };
+    const prisma = {
+      task: {
+        findFirst: jest.fn().mockResolvedValue(task),
+      },
+      progressLog: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const tasksService = {
+      updateProgressAndCompletion: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await service.recalculateTaskFromLogs('user-1', 'task-1');
+
+    expect(tasksService.updateProgressAndCompletion).toHaveBeenCalledWith(
+      'task-1',
+      { current: 0, total: 100 },
+      false,
+      prisma,
+    );
+  });
+
+  it('deleteLog removes log, replays task, and hard-deletes empty hidden leaf', async () => {
+    const tx = {
+      progressLog: {
+        delete: jest.fn().mockResolvedValue({}),
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      task: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'task-1',
+          userId: 'user-1',
+          trackerType: TrackerType.NUMBER,
+          trackerMetadata: { current: 5, total: 100 },
+          isHidden: true,
+          _count: { children: 0 },
+        }),
+        delete: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const prisma = {
+      progressLog: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'log-1',
+          taskId: 'task-1',
+          userId: 'user-1',
+        }),
+      },
+      $transaction: jest.fn(async (fn: (arg: typeof tx) => Promise<void>) => fn(tx)),
+    };
+    const tasksService = {
+      updateProgressAndCompletion: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await service.deleteLog('user-1', 'task-1', 'log-1');
+
+    expect(tx.progressLog.delete).toHaveBeenCalledWith({ where: { id: 'log-1' } });
+    expect(tasksService.updateProgressAndCompletion).toHaveBeenCalled();
+    expect(tx.task.delete).toHaveBeenCalledWith({ where: { id: 'task-1' } });
+  });
+
+  it('deleteLog does not delete task when logs remain', async () => {
+    const tx = {
+      progressLog: {
+        delete: jest.fn().mockResolvedValue({}),
+        count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'log-2', appliedTrackerMetadata: { current: 10, total: 100 } },
+        ]),
+      },
+      task: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'task-1',
+          userId: 'user-1',
+          trackerType: TrackerType.NUMBER,
+          trackerMetadata: { current: 5, total: 100 },
+        }),
+        delete: jest.fn(),
+      },
+    };
+    const prisma = {
+      progressLog: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'log-1',
+          taskId: 'task-1',
+          userId: 'user-1',
+        }),
+      },
+      $transaction: jest.fn(async (fn: (arg: typeof tx) => Promise<void>) => fn(tx)),
+    };
+    const tasksService = {
+      updateProgressAndCompletion: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await service.deleteLog('user-1', 'task-1', 'log-1');
+
+    expect(tx.task.delete).not.toHaveBeenCalled();
+  });
 });

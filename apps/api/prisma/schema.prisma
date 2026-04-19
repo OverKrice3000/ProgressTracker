@@ -74,6 +74,8 @@ model ProgressLog {
   userId           String   @map("user_id")
   /** Calendar day the user attributed this work to (local YYYY-MM-DD from client). Drives stats and daily caps. */
   loggedDate       DateTime @map("logged_date") @db.Date
+  /** Task trackerMetadata after this log was applied; enables ordered replay after edit/delete. */
+  appliedTrackerMetadata Json? @map("applied_tracker_metadata")
   timestamp        DateTime @default(now())
   timeSpentMinutes Int      @map("time_spent_minutes")
   snapshot         Json

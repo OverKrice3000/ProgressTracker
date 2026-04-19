@@ -9,6 +9,11 @@ import { ProgressLogsService } from './progress-logs.service';
 export class ProgressLogsAggregateController {
   constructor(private readonly progressLogsService: ProgressLogsService) {}
 
+  @Get()
+  list(@CurrentUserId() userId: string) {
+    return this.progressLogsService.listForUser(userId);
+  }
+
   @Get('daily-total')
   getDailyTotal(@CurrentUserId() userId: string, @Query() query: DailyTotalQueryDto) {
     return this.progressLogsService.getDailyTotalForRange(
