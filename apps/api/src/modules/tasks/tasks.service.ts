@@ -139,6 +139,13 @@ export class TasksService {
     if (dto.description !== undefined) {
       data.description = dto.description;
     }
+    if (dto.trackerMetadata !== undefined) {
+      const targetUpdate = this.mergeTrackerTargetUpdate(task, dto.trackerMetadata);
+      data.trackerMetadata = targetUpdate.metadata;
+      if (targetUpdate.isCompleted !== undefined) {
+        data.isCompleted = targetUpdate.isCompleted;
+      }
+    }
     if (Object.keys(data).length === 0) {
       return task;
     }
@@ -146,6 +153,51 @@ export class TasksService {
       where: { id: task.id },
       data,
     });
+  }
+
+  private mergeTrackerTargetUpdate(
+    task: Task,
+    partial: Record<string, unknown>,
+  ): { metadata: Prisma.InputJsonValue; isCompleted?: boolean } {
+    if (task.trackerType === TrackerType.NUMBER) {
+      const meta = task.trackerMetadata as { current?: unknown; total?: unknown };
+      const current = Math.max(0, Math.floor(Number(meta.current ?? 0)));
+      if (partial['total'] === undefined) {
+        throw new BadRequestException('Missing total for counter target update.');
+      }
+      const newTotal = Math.floor(Number(partial['total']));
+      if (!Number.isFinite(newTotal) || newTotal < 1) {
+        throw new BadRequestException('Invalid target.');
+      }
+      if (newTotal < current) {
+        throw new BadRequestException('Target cannot be lower than current progress.');
+      }
+      const next = { ...meta, total: newTotal };
+      return {
+        metadata: next as Prisma.InputJsonValue,
+        isCompleted: current >= newTotal,
+      };
+    }
+    if (task.trackerType === TrackerType.TIME) {
+      const meta = task.trackerMetadata as { currentMinutes?: unknown; totalMinutes?: unknown };
+      const currentMin = Math.max(0, Math.floor(Number(meta.currentMinutes ?? 0)));
+      if (partial['totalMinutes'] === undefined) {
+        throw new BadRequestException('Missing totalMinutes for duration target update.');
+      }
+      const newTotal = Math.floor(Number(partial['totalMinutes']));
+      if (!Number.isFinite(newTotal) || newTotal < 1) {
+        throw new BadRequestException('Invalid target duration.');
+      }
+      if (newTotal < currentMin) {
+        throw new BadRequestException('Target cannot be lower than current progress.');
+      }
+      const next = { ...meta, totalMinutes: newTotal };
+      return {
+        metadata: next as Prisma.InputJsonValue,
+        isCompleted: currentMin >= newTotal,
+      };
+    }
+    throw new BadRequestException('Target can only be updated for counter and duration tasks.');
   }
 
   async findChildren(userId: string, parentId: string): Promise<Task[]> {

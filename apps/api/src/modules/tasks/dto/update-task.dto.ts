@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -10,4 +10,9 @@ export class UpdateTaskDto {
   @IsString()
   @MaxLength(1024)
   description?: string;
+
+  /** Partial metadata: `{ total }` for NUMBER, `{ totalMinutes }` for TIME — merged server-side. */
+  @IsOptional()
+  @IsObject()
+  trackerMetadata?: Record<string, unknown>;
 }

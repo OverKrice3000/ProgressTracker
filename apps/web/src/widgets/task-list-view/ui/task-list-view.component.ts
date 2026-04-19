@@ -9,6 +9,7 @@ import { TaskActionsMenuComponent } from '../../../entities/task/ui/task-actions
 import { TaskStatusBadgeComponent } from '../../../entities/task/ui/task-status-badge.component';
 import { TrackerTypeLabelPipe } from '../../../entities/task/ui/tracker-type-label.pipe';
 import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.pipe';
+import { TaskProgressBarUi, getFlatListProgressBarUi } from '../../../entities/task/lib/task-list-progress';
 
 @Component({
   selector: 'app-task-list-view',
@@ -57,6 +58,17 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           <p class="truncate text-xs text-slate-500">
             {{ task.trackerType | trackerTypeLabel }}
           </p>
+          <ng-container *ngIf="progressUi(task) as ui">
+            <p class="text-xs font-medium text-slate-700">{{ ui.label }}</p>
+            <div class="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-slate-200">
+              <div
+                class="h-full rounded-full transition-[width] duration-300"
+                [class.bg-emerald-500]="ui.done"
+                [class.bg-sky-600]="!ui.done"
+                [style.width.%]="ui.ratio * 100"
+              ></div>
+            </div>
+          </ng-container>
         </div>
 
         <div class="flex min-h-8 flex-col items-end justify-center gap-1">
@@ -97,5 +109,9 @@ export class TaskListViewComponent {
 
   showAddProgress(task: TaskBase): boolean {
     return showAddProgressOnListRow(task);
+  }
+
+  progressUi(task: TaskBase): TaskProgressBarUi | null {
+    return getFlatListProgressBarUi(task);
   }
 }

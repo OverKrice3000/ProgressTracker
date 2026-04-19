@@ -76,7 +76,10 @@ export class TasksApiService {
     return this.http.post<TaskBase>('api/tasks', payload, { withCredentials: true });
   }
 
-  update(taskId: string, payload: { name: string; description: string }): Observable<TaskBase> {
+  update(
+    taskId: string,
+    payload: { name: string; description: string; trackerMetadata?: Record<string, unknown> },
+  ): Observable<TaskBase> {
     return this.http.patch<TaskBase>(`api/tasks/${taskId}`, payload, { withCredentials: true });
   }
 

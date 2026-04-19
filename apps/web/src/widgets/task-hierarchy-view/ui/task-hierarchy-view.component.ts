@@ -9,6 +9,10 @@ import { TaskAvatarComponent } from '../../../entities/task/ui/task-avatar.compo
 import { TaskStatusBadgeComponent } from '../../../entities/task/ui/task-status-badge.component';
 import { TrackerTypeLabelPipe } from '../../../entities/task/ui/tracker-type-label.pipe';
 import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.pipe';
+import {
+  TaskProgressBarUi,
+  getHierarchyProgressBarUi,
+} from '../../../entities/task/lib/task-list-progress';
 
 @Component({
   selector: 'app-task-hierarchy-view',
@@ -85,6 +89,17 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
             <p class="truncate text-xs text-slate-500">
               {{ node.trackerType | trackerTypeLabel }}
             </p>
+            <ng-container *ngIf="progressUi(node) as ui">
+              <p class="text-xs font-medium text-slate-700">{{ ui.label }}</p>
+              <div class="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-slate-200">
+                <div
+                  class="h-full rounded-full transition-[width] duration-300"
+                  [class.bg-emerald-500]="ui.done"
+                  [class.bg-sky-600]="!ui.done"
+                  [style.width.%]="ui.ratio * 100"
+                ></div>
+              </div>
+            </ng-container>
           </div>
 
           <div class="flex min-h-8 items-center justify-end gap-2">
@@ -179,5 +194,9 @@ export class TaskHierarchyViewComponent {
 
   canLogProgress(node: TaskTreeNode): boolean {
     return showAddProgressOnListRow(node);
+  }
+
+  progressUi(node: TaskTreeNode): TaskProgressBarUi | null {
+    return getHierarchyProgressBarUi(node);
   }
 }

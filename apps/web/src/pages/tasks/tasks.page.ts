@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { TrackerType } from '@progress-tracker/contracts';
@@ -8,6 +8,7 @@ import { TRACKER_TYPES_IN_DISPLAY_ORDER } from '../../entities/task/lib/tracker-
 import { TrackerTypeLabelPipe } from '../../entities/task/ui/tracker-type-label.pipe';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import { TaskTreeRefreshService } from '../../features/tasks/model/task-tree-refresh.service';
 import { TaskTrackingStore } from '../../features/tasks/model/task-tracking.store';
 import {
   CreateTaskDialogComponent,
@@ -17,6 +18,7 @@ import {
   EditTaskDialogComponent,
   EditTaskDialogData,
 } from '../../features/tasks/ui/edit-task-dialog.component';
+import { TrackProgressDialogComponent } from '../../features/tasks/ui/track-progress-dialog.component';
 import {
   ConfirmActionDialogComponent,
   ConfirmActionDialogData,
@@ -158,8 +160,9 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
 export class TasksPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly dialogs = inject(TuiDialogService);
-  private readonly router = inject(Router);
   private readonly trackingStore = inject(TaskTrackingStore);
+  private readonly taskTreeRefresh = inject(TaskTreeRefreshService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly trackerTypes = TRACKER_TYPES_IN_DISPLAY_ORDER;
   readonly viewMode = signal<'hierarchy' | 'recent'>('hierarchy');
@@ -197,6 +200,12 @@ export class TasksPage implements OnInit {
     this.showArchived.set(localStorage.getItem(SHOW_ARCHIVED_STORAGE_KEY) === 'true');
     this.loadTree();
     this.trackingStore.loadCurrent();
+    this.taskTreeRefresh.treeChanged$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.loadTree();
+      if (this.viewMode() === 'recent') {
+        this.loadRecent();
+      }
+    });
   }
 
   setViewMode(mode: 'hierarchy' | 'recent'): void {
@@ -289,10 +298,21 @@ export class TasksPage implements OnInit {
   }
 
   openTaskLog(task: TaskBase): void {
-    if (task.isHidden) {
+    if (task.isHidden || task.trackerType === TrackerType.SUBTASK) {
       return;
     }
-    void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
+    this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
+      label: 'Track progress',
+      data: {
+        task,
+        onSuccess: () => {
+          this.loadTree();
+          if (this.viewMode() === 'recent') {
+            this.loadRecent();
+          }
+        },
+      },
+    }).subscribe();
   }
 
   toggleTracking(task: TaskBase): void {
@@ -301,12 +321,21 @@ export class TasksPage implements OnInit {
     }
     const current = this.trackingStore.currentSession();
     if (current?.taskId === task.id) {
-      void this.router.navigate(['/task', task.id], {
-        queryParams: {
-          log: '1',
-          stopTracking: '1',
-          elapsed: String(this.trackingStore.elapsedMinutes()),
-        },
+      this.tasksApi.getTask(task.id).subscribe((fresh) => {
+        this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
+          label: 'Track progress',
+          data: {
+            task: fresh,
+            prefillElapsedMinutes: this.trackingStore.elapsedMinutes(),
+            stopTrackingAfterSave: true,
+            onSuccess: () => {
+              this.loadTree();
+              if (this.viewMode() === 'recent') {
+                this.loadRecent();
+              }
+            },
+          },
+        }).subscribe();
       });
       return;
     }
