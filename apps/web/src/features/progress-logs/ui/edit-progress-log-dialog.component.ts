@@ -369,6 +369,7 @@ export class EditProgressLogDialogComponent implements OnInit {
         timestamp: localNoonIsoForYmd(ymd),
         dayStartIso: start,
         dayEndIso: end,
+        clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
       })
       .subscribe({
         next: () => {

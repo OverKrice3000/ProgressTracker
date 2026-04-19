@@ -103,6 +103,8 @@ export class TasksApiService {
       timestamp?: string;
       dayStartIso?: string;
       dayEndIso?: string;
+      /** `new Date().getTimezoneOffset()` so the API can validate “today” in local time. */
+      clientTimezoneOffsetMinutes?: number;
     },
   ) {
     return this.http.post(`api/tasks/${taskId}/logs`, payload, { withCredentials: true });

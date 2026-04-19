@@ -477,6 +477,7 @@ export class TrackProgressDialogComponent implements OnInit {
         timestamp: localNoonIsoForYmd(ymd),
         dayStartIso: start,
         dayEndIso: end,
+        clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
       })
       .pipe(switchMap(() => this.tasksApi.getTask(task.id)))
       .subscribe({

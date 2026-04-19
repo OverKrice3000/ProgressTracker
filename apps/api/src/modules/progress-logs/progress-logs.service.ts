@@ -33,7 +33,7 @@ export class ProgressLogsService {
       throw new BadRequestException('timeSpentMinutes cannot exceed 1440');
     }
 
-    this.assertLoggedDateNotFuture(dto.loggedDateYmd);
+    this.assertLoggedDateNotFuture(dto.loggedDateYmd, dto.clientTimezoneOffsetMinutes);
 
     if (dto.dayStartIso && dto.dayEndIso) {
       const { totalMinutes } = await this.getDailyTotalForRange(
@@ -130,7 +130,7 @@ export class ProgressLogsService {
 
     const nextYmd =
       dto.loggedDateYmd !== undefined ? dto.loggedDateYmd : this.prismaDateToYmd(log.loggedDate);
-    this.assertLoggedDateNotFuture(nextYmd);
+    this.assertLoggedDateNotFuture(nextYmd, dto.clientTimezoneOffsetMinutes);
 
     const nextMetadata = (dto.trackerMetadata ??
       (log.appliedTrackerMetadata as Record<string, unknown> | null)) as Record<string, unknown>;
@@ -319,14 +319,31 @@ export class ProgressLogsService {
     }
   }
 
-  private assertLoggedDateNotFuture(ymd: string): void {
-    const [y, mo, d] = ymd.split('-').map(Number);
-    const logUtc = Date.UTC(y, mo - 1, d);
-    const now = new Date();
-    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    if (logUtc > todayUtc) {
+  /**
+   * `loggedDateYmd` is the user's local calendar day. Without `clientTimezoneOffsetMinutes`, we only know
+   * UTC "today", which wrongly rejects local-today near midnight in timezones ahead of UTC.
+   */
+  private assertLoggedDateNotFuture(ymd: string, clientTimezoneOffsetMinutes?: number): void {
+    const todayYmd = this.getTodayYmdForClient(clientTimezoneOffsetMinutes);
+    if (ymd > todayYmd) {
       throw new BadRequestException('Cannot log progress for a future date.');
     }
+  }
+
+  /** YYYY-MM-DD for the user's local calendar day (`getTimezoneOffset` per ECMAScript). */
+  private getTodayYmdForClient(clientTimezoneOffsetMinutes?: number): string {
+    if (clientTimezoneOffsetMinutes === undefined || clientTimezoneOffsetMinutes === null) {
+      const now = new Date();
+      const y = now.getUTCFullYear();
+      const mo = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      return `${y}-${mo}-${day}`;
+    }
+    const shifted = new Date(Date.now() - clientTimezoneOffsetMinutes * 60 * 1000);
+    const y = shifted.getUTCFullYear();
+    const mo = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(shifted.getUTCDate()).padStart(2, '0');
+    return `${y}-${mo}-${day}`;
   }
 
   /** Store as PostgreSQL DATE via Prisma (UTC calendar day). */

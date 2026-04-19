@@ -79,6 +79,57 @@ describe('ProgressLogsService', () => {
     );
   });
 
+  it('allows local calendar today when UTC date is still yesterday (ahead-of-UTC timezone)', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-04-19T22:00:00.000Z'));
+    const prisma = {
+      progressLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
+      task: { findMany: jest.fn() },
+    };
+    const tasksService = {
+      findById: jest.fn().mockResolvedValue(baseTask),
+      makeSnapshot: jest.fn().mockReturnValue({
+        taskName: 'Read book',
+        trackerType: TrackerType.NUMBER,
+        trackerMetadata: {},
+      }),
+      updateProgressAndCompletion: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await service.create('user-1', 'task-1', {
+      timeSpentMinutes: 30,
+      loggedDateYmd: '2026-04-20',
+      trackerMetadata: { current: 30, total: 100 },
+      clientTimezoneOffsetMinutes: -180,
+    });
+
+    expect(prisma.progressLog.create).toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('still rejects a date after local today when client timezone offset is sent', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-04-19T22:00:00.000Z'));
+    const prisma = { progressLog: { create: jest.fn() }, task: { findMany: jest.fn() } };
+    const tasksService = {
+      findById: jest.fn().mockResolvedValue(baseTask),
+      makeSnapshot: jest.fn(),
+      updateProgressAndCompletion: jest.fn(),
+    };
+
+    const service = new ProgressLogsService(prisma as never, tasksService as never);
+    await expect(
+      service.create('user-1', 'task-1', {
+        timeSpentMinutes: 30,
+        loggedDateYmd: '2026-04-21',
+        trackerMetadata: { current: 30, total: 100 },
+        clientTimezoneOffsetMinutes: -180,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    jest.useRealTimers();
+  });
+
   it('recalculateTaskFromLogs applies last log metadata', async () => {
     const prisma = {
       task: {

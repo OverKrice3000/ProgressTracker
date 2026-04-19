@@ -28,4 +28,15 @@ export class CreateProgressLogDto {
   @IsOptional()
   @IsString()
   dayEndIso?: string;
+
+  /**
+   * Same value as `new Date().getTimezoneOffset()` in the browser: minutes to add to local time to get UTC.
+   * Used so the server can treat `loggedDateYmd` as the user's local calendar day (not UTC midnight).
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-840)
+  @Max(840)
+  clientTimezoneOffsetMinutes?: number;
 }

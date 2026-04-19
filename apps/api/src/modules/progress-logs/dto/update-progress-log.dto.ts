@@ -29,4 +29,12 @@ export class UpdateProgressLogDto {
   @IsOptional()
   @IsString()
   dayEndIso?: string;
+
+  /** Same semantics as {@link CreateProgressLogDto.clientTimezoneOffsetMinutes}. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-840)
+  @Max(840)
+  clientTimezoneOffsetMinutes?: number;
 }

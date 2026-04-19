@@ -25,6 +25,7 @@ export interface UpdateProgressLogPayload {
   timestamp?: string;
   dayStartIso?: string;
   dayEndIso?: string;
+  clientTimezoneOffsetMinutes?: number;
 }
 
 @Injectable({ providedIn: 'root' })
