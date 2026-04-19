@@ -8,11 +8,20 @@ import {
   SimpleChanges,
   signal,
 } from '@angular/core';
+import { formatDurationMinutes } from '../../../shared/lib/format-duration';
+import { colorForStatsSlice } from '../../../shared/lib/stats-slice-color';
 
 export interface PieNode {
   taskId: string;
   taskName: string;
   minutes: number;
+  /** HSL hue for this slice branch; sub-slices share parent hue with different lightness. */
+  hue?: number;
+  shadeIndex?: number;
+  /** When set, overrides HSL (e.g. neutral grey for Untracked). */
+  fillColor?: string;
+  /** Only folder slices receive hover, tooltip, and pointer cursor (drill-down). */
+  isFolderSlice?: boolean;
 }
 
 interface PieSegment {
@@ -20,6 +29,8 @@ interface PieSegment {
   path: string;
   color: string;
   isFullCircle?: boolean;
+  title: string;
+  interactive: boolean;
 }
 
 @Component({
@@ -29,45 +40,56 @@ interface PieSegment {
   template: `
     <div class="rounded-2xl bg-white p-5 shadow-sm">
       <div class="space-y-5">
-      <h3 class="text-lg font-semibold text-slate-900">Time by task</h3>
-      <ng-container *ngIf="nodes.length && totalMinutes() > 0; else empty">
-        <div class="flex flex-col gap-5">
-        <svg [attr.viewBox]="viewBox" class="mx-auto h-64 w-full max-w-md">
-          <g [attr.transform]="'translate(' + cx + ',' + cy + ')'">
-            @for (seg of segments(); track seg.taskId) {
-              @if (seg.isFullCircle) {
-                <circle
-                  [attr.r]="r"
-                  [attr.fill]="seg.color"
-                  stroke="#fff"
-                  stroke-width="1"
-                  class="cursor-pointer hover:opacity-90"
-                  (click)="segmentClick.emit(seg.taskId)"
-                />
-              } @else {
-                <path
-                  [attr.d]="seg.path"
-                  [attr.fill]="seg.color"
-                  stroke="#fff"
-                  stroke-width="1"
-                  class="cursor-pointer hover:opacity-90"
-                  (click)="segmentClick.emit(seg.taskId)"
-                />
-              }
-            }
-          </g>
-        </svg>
-        <ul class="space-y-2 text-sm text-slate-600">
-          <li *ngFor="let node of nodes" class="flex justify-between gap-3">
-            <span class="truncate">{{ node.taskName }}</span>
-            <span class="shrink-0 font-medium">{{ node.minutes }}m</span>
-          </li>
-        </ul>
-        </div>
-      </ng-container>
-      <ng-template #empty>
-        <p class="text-sm text-slate-500">No logged time in this selection.</p>
-      </ng-template>
+        <h3 class="text-lg font-semibold text-slate-900">Time by task</h3>
+        <ng-container *ngIf="nodes.length && totalMinutes() > 0; else empty">
+          <div class="flex flex-col items-center gap-5">
+            <svg
+              [attr.viewBox]="viewBox"
+              class="mx-auto h-[min(28rem,90vw)] w-full max-w-2xl"
+              role="img"
+              [attr.aria-label]="chartAriaLabel()"
+            >
+              <g [attr.transform]="'translate(' + cx + ',' + cy + ')'">
+                @for (seg of segments(); track seg.taskId) {
+                  @if (seg.isFullCircle) {
+                    <circle
+                      [attr.r]="r"
+                      [attr.fill]="seg.color"
+                      stroke="#fff"
+                      stroke-width="2"
+                      [class.pointer-events-none]="!seg.interactive"
+                      [class.cursor-pointer]="seg.interactive"
+                      [class.hover:opacity-90]="seg.interactive"
+                      (click)="seg.interactive && segmentClick.emit(seg.taskId)"
+                    >
+                      @if (seg.interactive) {
+                        <title>{{ seg.title }}</title>
+                      }
+                    </circle>
+                  } @else {
+                    <path
+                      [attr.d]="seg.path"
+                      [attr.fill]="seg.color"
+                      stroke="#fff"
+                      stroke-width="2"
+                      [class.pointer-events-none]="!seg.interactive"
+                      [class.cursor-pointer]="seg.interactive"
+                      [class.hover:opacity-90]="seg.interactive"
+                      (click)="seg.interactive && segmentClick.emit(seg.taskId)"
+                    >
+                      @if (seg.interactive) {
+                        <title>{{ seg.title }}</title>
+                      }
+                    </path>
+                  }
+                }
+              </g>
+            </svg>
+          </div>
+        </ng-container>
+        <ng-template #empty>
+          <p class="text-sm text-slate-500">No logged time in this selection.</p>
+        </ng-template>
       </div>
     </div>
   `,
@@ -76,29 +98,26 @@ export class DrilldownPieComponent implements OnChanges {
   @Input({ required: true }) nodes: PieNode[] = [];
   @Output() segmentClick = new EventEmitter<string>();
 
-  readonly cx = 100;
-  readonly cy = 100;
-  readonly r = 90;
-  readonly viewBox = '0 0 200 200';
+  readonly cx = 200;
+  readonly cy = 200;
+  readonly r = 170;
+  readonly viewBox = '0 0 400 400';
 
   readonly totalMinutes = signal(0);
   readonly segments = signal<PieSegment[]>([]);
-
-  private readonly colors = [
-    '#3b82f6',
-    '#6366f1',
-    '#8b5cf6',
-    '#a855f7',
-    '#d946ef',
-    '#f97316',
-    '#eab308',
-    '#22c55e',
-  ];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['nodes']) {
       this.recompute();
     }
+  }
+
+  chartAriaLabel(): string {
+    const t = this.totalMinutes();
+    if (t <= 0) {
+      return 'No data';
+    }
+    return `Time distribution, total ${formatDurationMinutes(t)}`;
   }
 
   private recompute(): void {
@@ -115,11 +134,16 @@ export class DrilldownPieComponent implements OnChanges {
       const sweep = (node.minutes / total) * 2 * Math.PI;
       const isFullCircle = sweep >= 2 * Math.PI - epsilon;
       const path = this.slicePath(this.r, angle, angle + sweep);
+      const color = colorForStatsSlice(node, i);
+      const interactive = node.isFolderSlice === true;
+      const title = `${node.taskName}: ${formatDurationMinutes(node.minutes)}`;
       segs.push({
         taskId: node.taskId,
         path,
-        color: this.colors[i % this.colors.length],
+        color,
         isFullCircle,
+        title,
+        interactive,
       });
       angle += sweep;
     });

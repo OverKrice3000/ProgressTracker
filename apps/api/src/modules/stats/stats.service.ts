@@ -10,7 +10,8 @@ export class StatsService {
     const from = this.startOfLocalDay(query.from);
     const toExclusive = this.startOfLocalDay(query.to);
     toExclusive.setDate(toExclusive.getDate() + 1);
-    const idleMinutes = (query.idleHours ?? 0) * 60;
+    /** Idle allowance per calendar day in range (e.g. sleep); total = per-day × number of days. */
+    const idleMinutesPerDay = (query.idleHours ?? 0) * 60;
 
     const logs = await this.prisma.progressLog.findMany({
       where: {
@@ -43,6 +44,7 @@ export class StatsService {
       1,
       Math.ceil((toExclusive.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)),
     );
+    const idleMinutes = idleMinutesPerDay * days;
     const availableMinutes = days * 24 * 60;
     const untrackedMinutes = Math.max(0, availableMinutes - totalLoggedMinutes - idleMinutes);
 
