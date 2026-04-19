@@ -33,9 +33,15 @@ export interface TrackProgressDialogData {
   imports: [CommonModule, ReactiveFormsModule, AppButtonComponent],
   template: `
     <form *ngIf="task() as currentTask" [formGroup]="logForm" (ngSubmit)="submitLog(currentTask)" class="grid gap-4">
-      <label class="grid gap-2 text-sm">
-        <span class="font-medium text-slate-800">Date</span>
-        <input type="date" formControlName="logDate" class="rounded border border-slate-300 p-2" />
+      <label class="grid gap-2 text-sm" for="track-progress-log-date">
+        <span class="font-medium text-slate-800">Select Date</span>
+        <input
+          id="track-progress-log-date"
+          type="date"
+          formControlName="logDate"
+          [max]="maxLogDateYmd()"
+          class="rounded border border-slate-300 p-2"
+        />
       </label>
 
       <div class="grid gap-2 text-sm">
@@ -273,6 +279,12 @@ export class TrackProgressDialogComponent implements OnInit {
 
   private recomputeLogModalState(task: TaskBase): void {
     const raw = this.logForm.getRawValue();
+    const ymdCheck = raw.logDate;
+    if (typeof ymdCheck === 'string' && ymdCheck.length > 0 && ymdCheck > this.maxLogDateYmd()) {
+      this.logProgressError.set('Date cannot be in the future.');
+      this.logDailyLine.set(null);
+      return;
+    }
     const timeSpent = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
     let trackerErr: string | null = null;
     if (timeSpent < 1) {
@@ -286,6 +298,10 @@ export class TrackProgressDialogComponent implements OnInit {
 
     const already = this.logDayAlreadyLogged();
     const ymd = raw.logDate;
+    if (trackerErr !== null) {
+      this.logDailyLine.set(null);
+      return;
+    }
     if (already === null || !ymd) {
       this.logDailyLine.set(null);
       return;
@@ -352,6 +368,11 @@ export class TrackProgressDialogComponent implements OnInit {
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
   }
 
+  /** `max` on the date input: today in local time (retrospective logging allowed; future dates blocked). */
+  maxLogDateYmd(): string {
+    return this.todayYmd();
+  }
+
   private patchLogFormFromTask(t: TaskBase): void {
     const m = t.trackerMetadata as Record<string, unknown>;
     const { hours: tsH, minutes: tsM } = splitMinutesToHoursMinutes(0);
@@ -403,7 +424,7 @@ export class TrackProgressDialogComponent implements OnInit {
     this.logDayAlreadyLogged.set(null);
     this.recomputeLogModalState(task);
     const { start, end } = getLocalDayRangeIso(ymd);
-    this.progressLogsApi.getDailyTotal(start, end, undefined).subscribe({
+    this.progressLogsApi.getDailyTotal(start, end, undefined, ymd).subscribe({
       next: (res) => {
         this.logDayAlreadyLogged.set(res.totalMinutes);
         this.logDayLoading.set(false);
@@ -452,6 +473,7 @@ export class TrackProgressDialogComponent implements OnInit {
       .addLog(task.id, {
         timeSpentMinutes,
         trackerMetadata,
+        loggedDateYmd: ymd,
         timestamp: localNoonIsoForYmd(ymd),
         dayStartIso: start,
         dayEndIso: end,

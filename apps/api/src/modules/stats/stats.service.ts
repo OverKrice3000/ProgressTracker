@@ -10,15 +10,17 @@ export class StatsService {
     const from = this.startOfLocalDay(query.from);
     const toExclusive = this.startOfLocalDay(query.to);
     toExclusive.setDate(toExclusive.getDate() + 1);
+    const fromLoggedDate = this.toLoggedDateUtc(query.from);
+    const toLoggedDate = this.toLoggedDateUtc(query.to);
     /** Idle allowance per calendar day in range (e.g. sleep); total = per-day × number of days. */
     const idleMinutesPerDay = (query.idleHours ?? 0) * 60;
 
     const logs = await this.prisma.progressLog.findMany({
       where: {
         userId,
-        timestamp: {
-          gte: from,
-          lt: toExclusive,
+        loggedDate: {
+          gte: fromLoggedDate,
+          lte: toLoggedDate,
         },
       },
       include: {
@@ -63,5 +65,12 @@ export class StatsService {
   private startOfLocalDay(value: string): Date {
     const [year, month, day] = value.split('-').map((part) => Number(part));
     return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+
+  /** Calendar date from query `from` / `to` (YYYY-MM-DD prefix) for `logged_date` filtering. */
+  private toLoggedDateUtc(value: string): Date {
+    const datePart = value.split('T')[0]!;
+    const [y, m, d] = datePart.split('-').map((part) => Number(part));
+    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
   }
 }

@@ -103,7 +103,7 @@ export class TasksService {
       where,
       include: {
         progressLogs: {
-          orderBy: { timestamp: 'desc' },
+          orderBy: { createdAt: 'desc' },
           take: 1,
           select: { timestamp: true },
         },

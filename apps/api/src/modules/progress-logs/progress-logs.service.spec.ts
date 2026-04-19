@@ -27,6 +27,7 @@ describe('ProgressLogsService', () => {
     await expect(
       service.create('user-1', 'task-1', {
         timeSpentMinutes: 1441,
+        loggedDateYmd: '2026-01-15',
         trackerMetadata: { current: 30, total: 100 },
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -47,6 +48,7 @@ describe('ProgressLogsService', () => {
     await expect(
       service.create('user-1', 'task-1', {
         timeSpentMinutes: 10,
+        loggedDateYmd: '2026-01-15',
         trackerMetadata: { current: 10, total: 100 },
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -66,6 +68,7 @@ describe('ProgressLogsService', () => {
     const service = new ProgressLogsService(prisma as never, tasksService as never);
     await service.create('user-1', 'task-1', {
       timeSpentMinutes: 30,
+      loggedDateYmd: '2026-01-15',
       trackerMetadata: { current: 100, total: 100 },
     });
 

@@ -16,6 +16,7 @@ export class ProgressLogsAggregateController {
       query.dayStart,
       query.dayEnd,
       query.excludeLogId,
+      query.dateYmd,
     );
   }
 }

@@ -16,9 +16,16 @@ export class ProgressLogsService {
       throw new BadRequestException('timeSpentMinutes cannot exceed 1440');
     }
 
-    const { dayStartIso, dayEndIso } = dto;
-    if (dayStartIso && dayEndIso) {
-      const { totalMinutes } = await this.getDailyTotalForRange(userId, dayStartIso, dayEndIso);
+    this.assertLoggedDateNotFuture(dto.loggedDateYmd);
+
+    if (dto.dayStartIso && dto.dayEndIso) {
+      const { totalMinutes } = await this.getDailyTotalForRange(
+        userId,
+        dto.dayStartIso,
+        dto.dayEndIso,
+        undefined,
+        dto.loggedDateYmd,
+      );
       if (totalMinutes + dto.timeSpentMinutes > 1440) {
         throw new BadRequestException('Total time for this day cannot exceed 24 hours.');
       }
@@ -41,10 +48,13 @@ export class ProgressLogsService {
       dto.trackerMetadata,
     );
 
+    const loggedDate = this.ymdToPrismaDate(dto.loggedDateYmd);
+
     const log = await this.prisma.progressLog.create({
       data: {
         taskId,
         userId,
+        loggedDate,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : new Date(),
         timeSpentMinutes: dto.timeSpentMinutes,
         snapshot: this.tasksService.makeSnapshot(task) as unknown as Prisma.InputJsonValue,
@@ -58,6 +68,22 @@ export class ProgressLogsService {
     );
 
     return log;
+  }
+
+  private assertLoggedDateNotFuture(ymd: string): void {
+    const [y, mo, d] = ymd.split('-').map(Number);
+    const logUtc = Date.UTC(y, mo - 1, d);
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    if (logUtc > todayUtc) {
+      throw new BadRequestException('Cannot log progress for a future date.');
+    }
+  }
+
+  /** Store as PostgreSQL DATE via Prisma (UTC calendar day). */
+  private ymdToPrismaDate(ymd: string): Date {
+    const [y, mo, d] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, mo - 1, d, 12, 0, 0, 0));
   }
 
   private assertIncremental(
@@ -118,18 +144,33 @@ export class ProgressLogsService {
     return false;
   }
 
-  /** Sum of time_spent_minutes for all logs in [dayStart, dayEnd), optionally excluding one log (edit flow). */
+  /** Sum of time_spent_minutes for logs on the given calendar day, optionally excluding one log (edit flow). */
   async getDailyTotalForRange(
     userId: string,
     dayStartIso: string,
     dayEndIso: string,
     excludeLogId?: string,
+    dateYmd?: string,
   ): Promise<{ totalMinutes: number }> {
     const dayStart = new Date(dayStartIso);
     const dayEnd = new Date(dayEndIso);
     if (Number.isNaN(dayStart.getTime()) || Number.isNaN(dayEnd.getTime()) || dayEnd <= dayStart) {
       throw new BadRequestException('Invalid day bounds');
     }
+
+    if (dateYmd) {
+      const loggedDate = this.ymdToPrismaDate(dateYmd);
+      const agg = await this.prisma.progressLog.aggregate({
+        where: {
+          userId,
+          loggedDate,
+          ...(excludeLogId ? { id: { not: excludeLogId } } : {}),
+        },
+        _sum: { timeSpentMinutes: true },
+      });
+      return { totalMinutes: agg._sum.timeSpentMinutes ?? 0 };
+    }
+
     const agg = await this.prisma.progressLog.aggregate({
       where: {
         userId,

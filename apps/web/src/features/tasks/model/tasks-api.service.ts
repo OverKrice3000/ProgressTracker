@@ -98,6 +98,8 @@ export class TasksApiService {
     payload: {
       timeSpentMinutes: number;
       trackerMetadata: Record<string, unknown>;
+      /** Local calendar day (YYYY-MM-DD) this log is attributed to. */
+      loggedDateYmd: string;
       timestamp?: string;
       dayStartIso?: string;
       dayEndIso?: string;
