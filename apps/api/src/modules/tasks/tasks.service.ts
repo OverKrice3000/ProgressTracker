@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { Prisma, Task, TrackerType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -7,6 +8,12 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 
 export interface TaskTreeNode extends Task {
   children: TaskTreeNode[];
+}
+
+export interface CurrentTrackingSessionDto {
+  taskId: string;
+  taskName: string;
+  startTimeMs: number;
 }
 
 @Injectable()
@@ -171,6 +178,129 @@ export class TasksService {
       taskName: task.name,
       trackerType: task.trackerType,
       trackerMetadata: task.trackerMetadata as Prisma.JsonObject,
+    };
+  }
+
+  async getCurrentSession(userId: string): Promise<CurrentTrackingSessionDto | null> {
+    const rows = await this.prisma.$queryRaw<
+      { taskId: string; taskName: string; startTimeMs: number | bigint }[]
+    >(
+      Prisma.sql`
+        SELECT cs.task_id AS "taskId", t.name AS "taskName", cs.start_time_ms AS "startTimeMs"
+        FROM current_sessions cs
+        JOIN tasks t ON t.id = cs.task_id
+        WHERE cs.user_id = ${userId}
+        LIMIT 1
+      `,
+    );
+    const session = rows[0];
+    if (!session) {
+      return null;
+    }
+    return {
+      taskId: session.taskId,
+      taskName: session.taskName,
+      startTimeMs: Number(session.startTimeMs),
+    };
+  }
+
+  async startTracking(
+    userId: string,
+    taskId: string,
+    startTimeMs: number,
+    stopExisting: boolean,
+  ): Promise<CurrentTrackingSessionDto> {
+    const task = await this.findById(userId, taskId);
+    if (task.trackerType === TrackerType.SUBTASK) {
+      throw new BadRequestException('Folders cannot be tracked directly');
+    }
+    if (task.isCompleted) {
+      throw new BadRequestException('Completed tasks cannot be tracked');
+    }
+
+    const existingRows = await this.prisma.$queryRaw<
+      { taskId: string; taskName: string; startTimeMs: number | bigint }[]
+    >(
+      Prisma.sql`
+        SELECT cs.task_id AS "taskId", t.name AS "taskName", cs.start_time_ms AS "startTimeMs"
+        FROM current_sessions cs
+        JOIN tasks t ON t.id = cs.task_id
+        WHERE cs.user_id = ${userId}
+        LIMIT 1
+      `,
+    );
+    const existing = existingRows[0];
+    if (existing && existing.taskId !== taskId && !stopExisting) {
+      throw new BadRequestException(`Already tracking ${existing.taskName}`);
+    }
+    if (!Number.isFinite(startTimeMs) || startTimeMs < 0) {
+      throw new BadRequestException('Invalid startTimeMs');
+    }
+
+    await this.prisma.$executeRaw(
+      Prisma.sql`
+        INSERT INTO current_sessions (id, user_id, task_id, start_time_ms, created_at, updated_at)
+        VALUES (${randomUUID()}, ${userId}, ${taskId}, ${Math.floor(startTimeMs)}, now(), now())
+        ON CONFLICT (user_id)
+        DO UPDATE SET task_id = EXCLUDED.task_id, start_time_ms = EXCLUDED.start_time_ms, updated_at = now()
+      `,
+    );
+    const rows = await this.prisma.$queryRaw<
+      { taskId: string; taskName: string; startTimeMs: number | bigint }[]
+    >(
+      Prisma.sql`
+        SELECT cs.task_id AS "taskId", t.name AS "taskName", cs.start_time_ms AS "startTimeMs"
+        FROM current_sessions cs
+        JOIN tasks t ON t.id = cs.task_id
+        WHERE cs.user_id = ${userId}
+        LIMIT 1
+      `,
+    );
+    const session = rows[0]!;
+    return {
+      taskId: session.taskId,
+      taskName: session.taskName,
+      startTimeMs: Number(session.startTimeMs),
+    };
+  }
+
+  async stopTracking(userId: string): Promise<{
+    taskId: string;
+    taskName: string;
+    startTimeMs: number;
+    stopTime: string;
+    elapsedMinutes: number;
+  }> {
+    const rows = await this.prisma.$queryRaw<
+      { taskId: string; taskName: string; startTimeMs: number | bigint }[]
+    >(
+      Prisma.sql`
+        SELECT cs.task_id AS "taskId", t.name AS "taskName", cs.start_time_ms AS "startTimeMs"
+        FROM current_sessions cs
+        JOIN tasks t ON t.id = cs.task_id
+        WHERE cs.user_id = ${userId}
+        LIMIT 1
+      `,
+    );
+    const session = rows[0];
+    if (!session) {
+      throw new NotFoundException('No active tracking session');
+    }
+    const stopTime = new Date();
+    const startMs = Number(session.startTimeMs);
+    const elapsedMinutes = Math.max(
+      1,
+      Math.round((stopTime.getTime() - startMs) / 60000),
+    );
+    await this.prisma.$executeRaw(
+      Prisma.sql`DELETE FROM current_sessions WHERE user_id = ${userId}`,
+    );
+    return {
+      taskId: session.taskId,
+      taskName: session.taskName,
+      startTimeMs: startMs,
+      stopTime: stopTime.toISOString(),
+      elapsedMinutes,
     };
   }
 

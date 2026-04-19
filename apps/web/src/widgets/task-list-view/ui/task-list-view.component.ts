@@ -31,14 +31,22 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
         <app-task-avatar [avatarUrl]="task.avatarUrl" [taskName]="task.name" />
 
         <div class="min-w-0 space-y-1">
-          <a
-            [routerLink]="['/task', task.id]"
-            class="line-clamp-1 text-sm font-semibold text-slate-900"
-          >
-            <span *ngFor="let s of (task.name | taskNameSegments:searchQuery)">
-              <span [class]="s.match ? 'rounded-sm bg-sky-100/90' : null">{{ s.text }}</span>
+          <div class="flex items-center gap-2">
+            <a
+              [routerLink]="['/task', task.id]"
+              class="line-clamp-1 text-sm font-semibold text-slate-900"
+            >
+              <span *ngFor="let s of (task.name | taskNameSegments:searchQuery)">
+                <span [class]="s.match ? 'rounded-sm bg-sky-100/90' : null">{{ s.text }}</span>
+              </span>
+            </a>
+            <span
+              *ngIf="activeTrackingTaskId === task.id"
+              class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
+            >
+              Tracking
             </span>
-          </a>
+          </div>
           <p class="truncate text-xs text-slate-500">
             {{ task.trackerType | trackerTypeLabel }}
           </p>
@@ -59,9 +67,12 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
         <div class="self-center justify-self-end">
           <app-task-actions-menu
             [canLogProgress]="showAddProgress(task)"
-            [showLogProgressOption]="task.trackerType !== trackerType.SUBTASK"
+            [showLogProgressOption]="task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
+            [showTrackingOption]="task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
+            [isTrackingActive]="activeTrackingTaskId === task.id"
             (editTask)="editTask.emit(task)"
             (logProgress)="logProgress.emit(task)"
+            (toggleTracking)="toggleTracking.emit(task)"
           />
         </div>
       </li>
@@ -73,8 +84,10 @@ export class TaskListViewComponent {
 
   @Input({ required: true }) tasks: TaskBase[] = [];
   @Input() searchQuery = '';
+  @Input() activeTrackingTaskId: string | null = null;
   @Output() editTask = new EventEmitter<TaskBase>();
   @Output() logProgress = new EventEmitter<TaskBase>();
+  @Output() toggleTracking = new EventEmitter<TaskBase>();
 
   showAddProgress(task: TaskBase): boolean {
     return showAddProgressOnListRow(task);

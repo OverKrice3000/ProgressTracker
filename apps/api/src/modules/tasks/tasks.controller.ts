@@ -3,6 +3,7 @@ import { CurrentUserId } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
+import { StartTrackingDto } from './dto/start-tracking.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
 
@@ -34,6 +35,21 @@ export class TasksController {
   @Get('recent-leaves')
   recentLeaves(@CurrentUserId() userId: string, @Query() query: TaskQueryDto) {
     return this.tasksService.findRecentLeafTasks(userId, query);
+  }
+
+  @Get('tracking/current')
+  currentTracking(@CurrentUserId() userId: string) {
+    return this.tasksService.getCurrentSession(userId);
+  }
+
+  @Post('tracking/start')
+  startTracking(@CurrentUserId() userId: string, @Body() dto: StartTrackingDto) {
+    return this.tasksService.startTracking(userId, dto.taskId, dto.startTimeMs, dto.stopExisting ?? false);
+  }
+
+  @Post('tracking/stop')
+  stopTracking(@CurrentUserId() userId: string) {
+    return this.tasksService.stopTracking(userId);
   }
 
   @Get(':id')

@@ -42,6 +42,16 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
         >
           Log progress
         </button>
+        <button
+          *ngIf="showTrackingOption"
+          type="button"
+          class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50"
+          [class.text-rose-600]="isTrackingActive"
+          [class.text-slate-700]="!isTrackingActive"
+          (click)="handleToggleTracking($event)"
+        >
+          {{ isTrackingActive ? 'Stop tracking' : 'Start tracking' }}
+        </button>
       </div>
     </div>
   `,
@@ -53,9 +63,12 @@ export class TaskActionsMenuComponent implements OnInit, OnDestroy {
 
   @Input() canLogProgress = true;
   @Input() showLogProgressOption = true;
+  @Input() showTrackingOption = false;
+  @Input() isTrackingActive = false;
 
   @Output() editTask = new EventEmitter<void>();
   @Output() logProgress = new EventEmitter<void>();
+  @Output() toggleTracking = new EventEmitter<void>();
 
   readonly menuOpen = signal(false);
 
@@ -101,5 +114,12 @@ export class TaskActionsMenuComponent implements OnInit, OnDestroy {
     }
     this.menuOpen.set(false);
     this.logProgress.emit();
+  }
+
+  handleToggleTracking(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuOpen.set(false);
+    this.toggleTracking.emit();
   }
 }

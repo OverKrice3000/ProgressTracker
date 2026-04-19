@@ -31,6 +31,27 @@
           </div>
         </header>
       }
+      @if (showHeader()) {
+        @if (trackingStore.currentSession(); as active) {
+          <div class="fixed bottom-4 right-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-md">
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <span class="min-w-0 truncate font-medium text-sky-900">
+                Tracking:
+                <a
+                  [routerLink]="['/task', active.taskId]"
+                  class="underline-offset-2 hover:underline"
+                >
+                  {{ active.taskName }}
+                </a>
+                - {{ formatElapsedMinutes(trackingStore.elapsedMinutes()) }}
+              </span>
+              <app-button appearance="outline-grayscale" size="s" (click)="stopTrackingFromHeader()">
+                Stop
+              </app-button>
+            </div>
+          </div>
+        }
+      }
       <router-outlet />
     </main>
   }

@@ -19,7 +19,6 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
     TaskActionsMenuComponent,
     TaskAvatarComponent,
     TaskStatusBadgeComponent,
-    TaskHierarchyViewComponent,
     TaskNameSegmentsPipe,
     TrackerTypeLabelPipe,
   ],
@@ -57,15 +56,23 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           <app-task-avatar class="shrink-0" [avatarUrl]="node.avatarUrl" [taskName]="node.name" />
 
           <div class="min-w-0 space-y-1">
-            <a
-              [routerLink]="['/task', node.id]"
-              class="line-clamp-1 text-sm font-semibold text-slate-900"
-              (click)="$event.stopPropagation()"
-            >
-              <span *ngFor="let s of (node.name | taskNameSegments:searchQuery)">
-                <span [class]="s.match ? 'rounded-sm bg-sky-100/90' : null">{{ s.text }}</span>
+            <div class="flex items-center gap-2">
+              <a
+                [routerLink]="['/task', node.id]"
+                class="line-clamp-1 text-sm font-semibold text-slate-900"
+                (click)="$event.stopPropagation()"
+              >
+                <span *ngFor="let s of (node.name | taskNameSegments:searchQuery)">
+                  <span [class]="s.match ? 'rounded-sm bg-sky-100/90' : null">{{ s.text }}</span>
+                </span>
+              </a>
+              <span
+                *ngIf="activeTrackingTaskId === node.id"
+                class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
+              >
+                Tracking
               </span>
-            </a>
+            </div>
             <p class="truncate text-xs text-slate-500">
               {{ node.trackerType | trackerTypeLabel }}
             </p>
@@ -78,9 +85,12 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           <div class="self-center justify-self-end">
             <app-task-actions-menu
               [canLogProgress]="canLogProgress(node)"
-              [showLogProgressOption]="node.trackerType !== trackerType.SUBTASK"
+              [showLogProgressOption]="node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
+              [showTrackingOption]="node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
+              [isTrackingActive]="activeTrackingTaskId === node.id"
               (editTask)="editTask.emit(node)"
               (logProgress)="logProgress.emit(node)"
+              (toggleTracking)="toggleTracking.emit(node)"
             />
           </div>
         </div>
@@ -91,9 +101,11 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           [searchQuery]="searchQuery"
           [expandedFolderIds]="expandedFolderIds"
           [depth]="depth + 1"
+          [activeTrackingTaskId]="activeTrackingTaskId"
           (folderExpandToggle)="folderExpandToggle.emit($event)"
           (editTask)="editTask.emit($event)"
           (logProgress)="logProgress.emit($event)"
+          (toggleTracking)="toggleTracking.emit($event)"
         />
       </li>
     </ul>
@@ -105,12 +117,14 @@ export class TaskHierarchyViewComponent {
   @Input({ required: true }) nodes: TaskTreeNode[] = [];
   @Input() searchQuery = '';
   @Input() depth = 0;
+  @Input() activeTrackingTaskId: string | null = null;
   /** IDs of folders that are expanded; set by the parent (Tasks or Task detail), shared at every nesting level. */
   @Input({ required: true }) expandedFolderIds!: Set<string>;
 
   @Output() folderExpandToggle = new EventEmitter<string>();
   @Output() editTask = new EventEmitter<TaskTreeNode>();
   @Output() logProgress = new EventEmitter<TaskTreeNode>();
+  @Output() toggleTracking = new EventEmitter<TaskTreeNode>();
 
   isExpanded(id: string): boolean {
     return this.expandedFolderIds.has(id);

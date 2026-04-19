@@ -8,6 +8,7 @@ import { TRACKER_TYPES_IN_DISPLAY_ORDER } from '../../entities/task/lib/tracker-
 import { TrackerTypeLabelPipe } from '../../entities/task/ui/tracker-type-label.pipe';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import { TaskTrackingStore } from '../../features/tasks/model/task-tracking.store';
 import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
@@ -16,6 +17,10 @@ import {
   EditTaskDialogComponent,
   EditTaskDialogData,
 } from '../../features/tasks/ui/edit-task-dialog.component';
+import {
+  ConfirmActionDialogComponent,
+  ConfirmActionDialogData,
+} from '../../shared/ui/modal/confirm-action-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { TaskListViewComponent } from '../../widgets/task-list-view/ui/task-list-view.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
@@ -107,9 +112,11 @@ import {
           [nodes]="filteredHierarchy()"
           [searchQuery]="searchQuery()"
           [expandedFolderIds]="expandedFolderIds()"
+          [activeTrackingTaskId]="activeTrackingTaskId()"
           (folderExpandToggle)="toggleFolderExpand($event)"
           (editTask)="openEditModal($event)"
           (logProgress)="openTaskLog($event)"
+          (toggleTracking)="toggleTracking($event)"
         />
       </ng-container>
 
@@ -123,8 +130,10 @@ import {
             <app-task-list-view
               [tasks]="row.tasks"
               [searchQuery]="searchQuery()"
+              [activeTrackingTaskId]="activeTrackingTaskId()"
               (editTask)="openEditModal($event)"
               (logProgress)="openTaskLog($event)"
+              (toggleTracking)="toggleTracking($event)"
             />
           </section>
         </div>
@@ -136,6 +145,7 @@ export class TasksPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly dialogs = inject(TuiDialogService);
   private readonly router = inject(Router);
+  private readonly trackingStore = inject(TaskTrackingStore);
 
   readonly trackerTypes = TRACKER_TYPES_IN_DISPLAY_ORDER;
   readonly viewMode = signal<'hierarchy' | 'recent'>('hierarchy');
@@ -146,6 +156,7 @@ export class TasksPage implements OnInit {
   readonly searchQuery = signal('');
   readonly completionFilter = signal<'all' | 'active' | 'completed'>('all');
   readonly trackerFilter = signal<string>('');
+  readonly activeTrackingTaskId = computed(() => this.trackingStore.currentSession()?.taskId ?? null);
 
   readonly filteredHierarchy = computed(() => {
     const roots = this.tree();
@@ -169,6 +180,7 @@ export class TasksPage implements OnInit {
 
   ngOnInit(): void {
     this.loadTree();
+    this.trackingStore.loadCurrent();
   }
 
   setViewMode(mode: 'hierarchy' | 'recent'): void {
@@ -249,6 +261,51 @@ export class TasksPage implements OnInit {
 
   openTaskLog(task: TaskBase): void {
     void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
+  }
+
+  toggleTracking(task: TaskBase): void {
+    const current = this.trackingStore.currentSession();
+    if (current?.taskId === task.id) {
+      void this.router.navigate(['/task', task.id], {
+        queryParams: {
+          log: '1',
+          stopTracking: '1',
+          elapsed: String(this.trackingStore.elapsedMinutes()),
+        },
+      });
+      return;
+    }
+    if (!current) {
+      const data: ConfirmActionDialogData = {
+        message: 'Start tracking this task?',
+        confirmLabel: 'Start',
+      };
+      this.dialogs
+        .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+          label: 'Start tracking',
+          data,
+        })
+        .subscribe((ok) => {
+          if (ok) {
+            this.trackingStore.startTracking(task.id);
+          }
+        });
+      return;
+    }
+    const data: ConfirmActionDialogData = {
+      message: `You are already tracking ${current.taskName}. Stop it and start this one?`,
+      confirmLabel: 'Switch',
+    };
+    this.dialogs
+      .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+        label: 'Switch tracking',
+        data,
+      })
+      .subscribe((ok) => {
+        if (ok) {
+          this.trackingStore.startTracking(task.id, true);
+        }
+      });
   }
 
   private loadTree(): void {

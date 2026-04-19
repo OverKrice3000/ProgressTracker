@@ -4,6 +4,20 @@ import { TrackerType } from '@progress-tracker/contracts';
 import { Observable } from 'rxjs';
 import { TaskBase, TaskFilters, TaskTreeNode } from '../../../entities/task/model/task.types';
 
+export interface CurrentTrackingSession {
+  taskId: string;
+  taskName: string;
+  startTimeMs: number;
+}
+
+export interface StopTrackingResult {
+  taskId: string;
+  taskName: string;
+  startTimeMs: number;
+  stopTime: string;
+  elapsedMinutes: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TasksApiService {
   private readonly http = inject(HttpClient);
@@ -57,5 +71,21 @@ export class TasksApiService {
 
   addLog(taskId: string, payload: { timeSpentMinutes: number; trackerMetadata: Record<string, unknown> }) {
     return this.http.post(`api/tasks/${taskId}/logs`, payload, { withCredentials: true });
+  }
+
+  getCurrentTracking(): Observable<CurrentTrackingSession | null> {
+    return this.http.get<CurrentTrackingSession | null>('api/tasks/tracking/current', {
+      withCredentials: true,
+    });
+  }
+
+  startTracking(payload: { taskId: string; startTimeMs: number; stopExisting?: boolean }): Observable<CurrentTrackingSession> {
+    return this.http.post<CurrentTrackingSession>('api/tasks/tracking/start', payload, {
+      withCredentials: true,
+    });
+  }
+
+  stopTracking(): Observable<StopTrackingResult> {
+    return this.http.post<StopTrackingResult>('api/tasks/tracking/stop', {}, { withCredentials: true });
   }
 }

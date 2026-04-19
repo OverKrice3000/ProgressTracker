@@ -22,6 +22,7 @@ model User {
   updatedAt    DateTime      @updatedAt @map("updated_at")
   tasks        Task[]
   progressLogs ProgressLog[]
+  currentSession CurrentSession?
 
   @@map("users")
 }
@@ -43,12 +44,27 @@ model Task {
   parent          Task?         @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children        Task[]        @relation("TaskHierarchy")
   progressLogs    ProgressLog[]
+  currentSessions CurrentSession[]
 
   @@index([userId])
   @@index([parentId])
   @@index([trackerType])
   @@index([depth])
   @@map("tasks")
+}
+
+model CurrentSession {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  taskId      String   @map("task_id")
+  startTimeMs BigInt   @map("start_time_ms")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("current_sessions")
 }
 
 model ProgressLog {

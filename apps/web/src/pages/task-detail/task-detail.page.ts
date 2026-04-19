@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, TemplateRef, ViewChild, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,6 +10,7 @@ import { distinctUntilChanged, filter, map, switchMap } from 'rxjs';
 import { showAddProgressOnListRow } from '../../entities/task/lib/task-progress-helpers';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import { TaskTrackingStore } from '../../features/tasks/model/task-tracking.store';
 import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
@@ -23,6 +24,10 @@ import {
   EditTaskDialogComponent,
   EditTaskDialogData,
 } from '../../features/tasks/ui/edit-task-dialog.component';
+import {
+  ConfirmActionDialogComponent,
+  ConfirmActionDialogData,
+} from '../../shared/ui/modal/confirm-action-dialog.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
@@ -42,16 +47,27 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
     <section class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4" *ngIf="task() as currentTask">
       <div class="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
         <div class="flex items-start justify-between gap-3">
-          <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
+            <span
+              *ngIf="activeTrackingTaskId() === currentTask.id"
+              class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
+            >
+              Tracking
+            </span>
+          </div>
           <div class="flex items-center gap-2">
             <app-button appearance="outline-grayscale" size="s" (click)="openEditModal(currentTask)">
               Edit task
             </app-button>
             <app-task-actions-menu
               [canLogProgress]="showAddProgressButton(currentTask)"
-              [showLogProgressOption]="currentTask.trackerType !== trackerType.SUBTASK"
+              [showLogProgressOption]="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+              [showTrackingOption]="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+              [isTrackingActive]="activeTrackingTaskId() === currentTask.id"
               (editTask)="openEditModal(currentTask)"
               (logProgress)="openLogModal()"
+              (toggleTracking)="toggleTracking(currentTask)"
             />
           </div>
         </div>
@@ -88,6 +104,13 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
         >
           Add progress log
         </app-button>
+        <app-button
+          *ngIf="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+          [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
+          (click)="toggleTracking(currentTask)"
+        >
+          {{ activeTrackingTaskId() === currentTask.id ? 'Stop tracking' : 'Start tracking' }}
+        </app-button>
       </div>
 
       <div class="space-y-3" *ngIf="subtaskTree().length > 0">
@@ -96,9 +119,11 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
           [nodes]="subtaskTree()"
           [searchQuery]="''"
           [expandedFolderIds]="subtaskExpandedFolderIds()"
+          [activeTrackingTaskId]="activeTrackingTaskId()"
           (folderExpandToggle)="toggleSubtaskFolder($event)"
           (editTask)="openEditModal($event)"
           (logProgress)="openTaskLog($event)"
+          (toggleTracking)="toggleTracking($event)"
         />
       </div>
 
@@ -180,11 +205,23 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
           <p *ngIf="logProgressError()" class="text-sm text-rose-600">{{ logProgressError() }}</p>
 
-          <div class="flex justify-end gap-2">
-            <app-button appearance="outline-grayscale" type="button" (click)="completeWith()">
-              Cancel
+          <div class="flex items-center justify-between gap-2">
+            <app-button
+              *ngIf="activeTrackingTaskId() === currentTask.id"
+              appearance="outline-grayscale"
+              type="button"
+              (click)="confirmStopWithoutLogging(completeWith, currentTask)"
+            >
+              Stop without logging
             </app-button>
-            <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">Submit</app-button>
+            <span *ngIf="activeTrackingTaskId() !== currentTask.id"></span>
+
+            <div class="flex gap-2">
+              <app-button appearance="outline-grayscale" type="button" (click)="completeWith()">
+                Cancel
+              </app-button>
+              <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">Save</app-button>
+            </div>
           </div>
         </form>
       </ng-template>
@@ -196,6 +233,7 @@ export class TaskDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tasksApi = inject(TasksApiService);
+  private readonly trackingStore = inject(TaskTrackingStore);
   private readonly fb = inject(FormBuilder);
   private readonly dialogs = inject(TuiDialogService);
   @ViewChild('logDialog') private logDialog?: TemplateRef<unknown>;
@@ -207,6 +245,8 @@ export class TaskDetailPage implements OnInit {
   /** Expanded folder ids in the subtasks list (same behavior as the Tasks page hierarchy). */
   readonly subtaskExpandedFolderIds = signal<Set<string>>(new Set());
   readonly logProgressError = signal<string | null>(null);
+  readonly activeTrackingTaskId = computed(() => this.trackingStore.currentSession()?.taskId ?? null);
+  private pendingStopTrackingForTaskId: string | null = null;
 
   readonly logForm = this.fb.nonNullable.group({
     timeSpentHours: [0, [Validators.min(0)]],
@@ -218,13 +258,13 @@ export class TaskDetailPage implements OnInit {
   });
 
   ngOnInit(): void {
+    this.trackingStore.loadCurrent();
     this.logForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       const t = this.task();
       if (t && t.trackerType !== TrackerType.SUBTASK) {
         this.logProgressError.set(this.computeProgressValidationError(t));
       }
     });
-
     this.route.paramMap
       .pipe(
         map((params) => params.get('id')),
@@ -248,6 +288,13 @@ export class TaskDetailPage implements OnInit {
         this.loadTask(taskId);
         this.loadSubtaskTree(taskId);
       });
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (!this.task()) {
+        return;
+      }
+      this.handleLogQueryIfPresent();
+    });
   }
 
   toggleSubtaskFolder(taskId: string): void {
@@ -276,6 +323,9 @@ export class TaskDetailPage implements OnInit {
   private computeProgressValidationError(task: TaskBase): string | null {
     const raw = this.logForm.getRawValue();
     const timeSpent = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
+    if (timeSpent < 1) {
+      return 'Minimum 1 minute required to log progress.';
+    }
     if (timeSpent > 1440) {
       return 'Time spent cannot exceed 1440 minutes.';
     }
@@ -350,14 +400,96 @@ export class TaskDetailPage implements OnInit {
     void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
   }
 
-  openLogModal(): void {
+  toggleTracking(task: TaskBase): void {
+    const current = this.trackingStore.currentSession();
+    if (current?.taskId === task.id) {
+      this.openLogModal(this.trackingStore.elapsedMinutes(), true);
+      return;
+    }
+    if (!current) {
+      const data: ConfirmActionDialogData = {
+        message: 'Start tracking this task?',
+        confirmLabel: 'Start',
+      };
+      this.dialogs
+        .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+          label: 'Start tracking',
+          data,
+        })
+        .subscribe((ok) => {
+          if (ok) {
+            this.trackingStore.startTracking(task.id);
+          }
+        });
+      return;
+    }
+    const data: ConfirmActionDialogData = {
+      message: `You are already tracking ${current.taskName}. Stop it and start this one?`,
+      confirmLabel: 'Switch',
+    };
+    this.dialogs
+      .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+        label: 'Switch tracking',
+        data,
+      })
+      .subscribe((ok) => {
+        if (ok) {
+          this.trackingStore.startTracking(task.id, true);
+        }
+      });
+  }
+
+  openLogModal(prefillElapsedMinutes?: number, stopTrackingAfterSave = false): void {
     const t = this.task();
     if (!this.logDialog || !t || t.trackerType === TrackerType.SUBTASK) {
       return;
     }
+    this.pendingStopTrackingForTaskId = stopTrackingAfterSave ? t.id : null;
     this.patchLogFormFromTask(t);
+    if (prefillElapsedMinutes && prefillElapsedMinutes > 0) {
+      this.logForm.patchValue({
+        timeSpentHours: Math.floor(prefillElapsedMinutes / 60),
+        timeSpentMinutes: prefillElapsedMinutes % 60,
+      });
+    }
     this.logProgressError.set(this.computeProgressValidationError(t));
-    this.dialogs.open(this.logDialog, { label: 'Track progress' }).subscribe();
+    this.dialogs.open(this.logDialog, { label: 'Track progress' }).subscribe(() => {
+      this.pendingStopTrackingForTaskId = null;
+    });
+  }
+
+  confirmStopWithoutLogging(
+    completeWith: (value?: unknown) => void,
+    currentTask: TaskBase,
+  ): void {
+    const active = this.trackingStore.currentSession();
+    if (!active || active.taskId !== currentTask.id) {
+      return;
+    }
+    const elapsed = this.trackingStore.elapsedMinutes();
+    const data: ConfirmActionDialogData = {
+      message: `Are you sure you want to stop tracking? This session's time (${this.formatElapsedAsHoursMinutes(elapsed)}) will be discarded and not saved to your progress.`,
+      confirmLabel: 'Stop and discard',
+      cancelLabel: 'Keep tracking',
+    };
+    this.dialogs
+      .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+        label: 'Discard tracked time?',
+        data,
+      })
+      .subscribe((ok) => {
+        if (!ok) {
+          return;
+        }
+        this.pendingStopTrackingForTaskId = null;
+        this.trackingStore.stopTracking(() => completeWith());
+      });
+  }
+
+  private formatElapsedAsHoursMinutes(totalMinutes: number): string {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h}h ${m}m`;
   }
 
   private patchLogFormFromTask(t: TaskBase): void {
@@ -410,7 +542,10 @@ export class TaskDetailPage implements OnInit {
       return;
     }
     const raw = this.logForm.getRawValue();
-    const timeSpentMinutes = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
+    const shouldStopTracking = this.pendingStopTrackingForTaskId === task.id;
+    const timeSpentMinutes = shouldStopTracking
+      ? this.trackingStore.elapsedMinutes()
+      : combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
     let progressValue: number | boolean = 0;
     if (task.trackerType === TrackerType.NUMBER) {
       progressValue = Number(raw.newCurrentNumber);
@@ -427,6 +562,11 @@ export class TaskDetailPage implements OnInit {
       .subscribe({
         next: (fresh) => {
           this.task.set(fresh);
+          this.pendingStopTrackingForTaskId = null;
+          if (shouldStopTracking && this.trackingStore.currentSession()?.taskId === task.id) {
+            this.trackingStore.stopTracking(() => completeWith());
+            return;
+          }
           completeWith();
         },
       });
@@ -457,17 +597,23 @@ export class TaskDetailPage implements OnInit {
   private loadTask(taskId: string): void {
     this.tasksApi.getTask(taskId).subscribe((task) => {
       this.task.set(task);
-      if (this.route.snapshot.queryParamMap.get('log') === '1') {
-        queueMicrotask(() => {
-          this.openLogModal();
-          void this.router.navigate([], {
-            relativeTo: this.route,
-            queryParams: { log: null },
-            queryParamsHandling: 'merge',
-            replaceUrl: true,
-          });
-        });
-      }
+      queueMicrotask(() => this.handleLogQueryIfPresent());
+    });
+  }
+
+  private handleLogQueryIfPresent(): void {
+    const currentTask = this.task();
+    if (!currentTask || this.route.snapshot.queryParamMap.get('log') !== '1') {
+      return;
+    }
+    const elapsed = Number(this.route.snapshot.queryParamMap.get('elapsed') ?? 0);
+    const shouldStopTracking = this.route.snapshot.queryParamMap.get('stopTracking') === '1';
+    this.openLogModal(Number.isFinite(elapsed) && elapsed > 0 ? elapsed : undefined, shouldStopTracking);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { log: null, elapsed: null, stopTracking: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
   }
 
