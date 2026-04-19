@@ -46,7 +46,11 @@ export class TasksApiService {
     return this.http.get<TaskBase[]>(`api/tasks/${taskId}/children`, { withCredentials: true });
   }
 
-  getRecentLeaves(filters: { isCompleted?: boolean; trackerType?: TrackerType }): Observable<TaskBase[]> {
+  getRecentLeaves(filters: {
+    isCompleted?: boolean;
+    trackerType?: TrackerType;
+    includeHidden?: boolean;
+  }): Observable<TaskBase[]> {
     let params = new HttpParams();
     if (filters.isCompleted !== undefined) {
       params = params.set('isCompleted', String(filters.isCompleted));
@@ -54,11 +58,18 @@ export class TasksApiService {
     if (filters.trackerType) {
       params = params.set('trackerType', filters.trackerType);
     }
+    if (filters.includeHidden !== undefined) {
+      params = params.set('includeHidden', String(filters.includeHidden));
+    }
     return this.http.get<TaskBase[]>('api/tasks/recent-leaves', { params, withCredentials: true });
   }
 
-  getTree(): Observable<TaskTreeNode[]> {
-    return this.http.get<TaskTreeNode[]>('api/tasks/tree', { withCredentials: true });
+  getTree(includeHidden = false): Observable<TaskTreeNode[]> {
+    let params = new HttpParams();
+    if (includeHidden) {
+      params = params.set('includeHidden', 'true');
+    }
+    return this.http.get<TaskTreeNode[]>('api/tasks/tree', { params, withCredentials: true });
   }
 
   create(payload: Partial<TaskBase>): Observable<TaskBase> {
@@ -67,6 +78,16 @@ export class TasksApiService {
 
   update(taskId: string, payload: { name: string; description: string }): Observable<TaskBase> {
     return this.http.patch<TaskBase>(`api/tasks/${taskId}`, payload, { withCredentials: true });
+  }
+
+  delete(taskId: string): Observable<{ archivedTaskIds: string[]; deletedTaskIds: string[] }> {
+    return this.http.delete<{ archivedTaskIds: string[]; deletedTaskIds: string[] }>(`api/tasks/${taskId}`, {
+      withCredentials: true,
+    });
+  }
+
+  restore(taskId: string): Observable<TaskBase> {
+    return this.http.patch<TaskBase>(`api/tasks/${taskId}/restore`, {}, { withCredentials: true });
   }
 
   addLog(taskId: string, payload: { timeSpentMinutes: number; trackerMetadata: Record<string, unknown> }) {

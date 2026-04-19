@@ -1,0 +1,2 @@
+ALTER TABLE "tasks"
+ADD COLUMN "is_hidden" BOOLEAN NOT NULL DEFAULT false;

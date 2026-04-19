@@ -27,6 +27,7 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
       <li
         *ngFor="let task of tasks"
         class="grid grid-cols-[auto,1fr,auto,auto] items-center gap-3 rounded-xl bg-white p-3 shadow-sm"
+        [class.opacity-60]="task.isHidden"
       >
         <app-task-avatar [avatarUrl]="task.avatarUrl" [taskName]="task.name" />
 
@@ -41,6 +42,12 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
               </span>
             </a>
             <span
+              *ngIf="task.isHidden"
+              class="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+            >
+              Archived
+            </span>
+            <span
               *ngIf="activeTrackingTaskId === task.id"
               class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
             >
@@ -54,25 +61,22 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
 
         <div class="flex min-h-8 flex-col items-end justify-center gap-1">
           <app-task-status-badge [isCompleted]="task.isCompleted" />
-          <a
-            *ngIf="showAddProgress(task)"
-            [routerLink]="['/task', task.id]"
-            [queryParams]="{ log: '1' }"
-            class="shrink-0 text-xs font-medium text-blue-600 hover:underline"
-          >
-            Add progress
-          </a>
         </div>
 
         <div class="self-center justify-self-end">
           <app-task-actions-menu
             [canLogProgress]="showAddProgress(task)"
-            [showLogProgressOption]="task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
-            [showTrackingOption]="task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
+            [showEditOption]="!task.isHidden"
+            [showLogProgressOption]="!task.isHidden && task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
+            [showTrackingOption]="!task.isHidden && task.trackerType !== trackerType.SUBTASK && !task.isCompleted"
             [isTrackingActive]="activeTrackingTaskId === task.id"
+            [showDeleteOption]="!task.isHidden"
+            [showRestoreOption]="task.isHidden"
             (editTask)="editTask.emit(task)"
             (logProgress)="logProgress.emit(task)"
             (toggleTracking)="toggleTracking.emit(task)"
+            (deleteTask)="deleteTask.emit(task)"
+            (restoreTask)="restoreTask.emit(task)"
           />
         </div>
       </li>
@@ -88,6 +92,8 @@ export class TaskListViewComponent {
   @Output() editTask = new EventEmitter<TaskBase>();
   @Output() logProgress = new EventEmitter<TaskBase>();
   @Output() toggleTracking = new EventEmitter<TaskBase>();
+  @Output() deleteTask = new EventEmitter<TaskBase>();
+  @Output() restoreTask = new EventEmitter<TaskBase>();
 
   showAddProgress(task: TaskBase): boolean {
     return showAddProgressOnListRow(task);

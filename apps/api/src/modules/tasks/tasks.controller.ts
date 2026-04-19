@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUserId } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -22,14 +22,24 @@ export class TasksController {
     return this.tasksService.update(userId, taskId, dto);
   }
 
+  @Delete(':id')
+  remove(@CurrentUserId() userId: string, @Param('id') taskId: string) {
+    return this.tasksService.deleteOrArchive(userId, taskId);
+  }
+
+  @Patch(':id/restore')
+  restore(@CurrentUserId() userId: string, @Param('id') taskId: string) {
+    return this.tasksService.restore(userId, taskId);
+  }
+
   @Get()
   list(@CurrentUserId() userId: string, @Query() query: TaskQueryDto) {
     return this.tasksService.findMany(userId, query);
   }
 
   @Get('tree')
-  tree(@CurrentUserId() userId: string) {
-    return this.tasksService.findTree(userId);
+  tree(@CurrentUserId() userId: string, @Query() query: TaskQueryDto) {
+    return this.tasksService.findTreeWithOptions(userId, query.includeHidden === 'true');
   }
 
   @Get('recent-leaves')

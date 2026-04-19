@@ -17,6 +17,9 @@ export class ProgressLogsService {
     }
 
     const task = await this.tasksService.findById(userId, taskId);
+    if (task.isHidden) {
+      throw new BadRequestException('Archived task is locked for logging');
+    }
     if (task.isCompleted) {
       throw new BadRequestException('Completed task is locked for logging');
     }

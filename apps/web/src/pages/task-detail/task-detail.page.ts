@@ -50,13 +50,19 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
             <span
-              *ngIf="activeTrackingTaskId() === currentTask.id"
+              *ngIf="currentTask.isHidden"
+              class="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+            >
+              Archived
+            </span>
+            <span
+              *ngIf="!currentTask.isHidden && activeTrackingTaskId() === currentTask.id"
               class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
             >
               Tracking
             </span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2" *ngIf="!currentTask.isHidden">
             <app-button appearance="outline-grayscale" size="s" (click)="openEditModal(currentTask)">
               Edit task
             </app-button>
@@ -68,6 +74,7 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
               (editTask)="openEditModal(currentTask)"
               (logProgress)="openLogModal()"
               (toggleTracking)="toggleTracking(currentTask)"
+              (deleteTask)="confirmDeleteTask(currentTask)"
             />
           </div>
         </div>
@@ -92,24 +99,34 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
       <div class="flex flex-wrap gap-3">
         <app-button
-          *ngIf="currentTask.trackerType === trackerType.SUBTASK"
+          *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
           (click)="openCreateChildModal()"
           [disabled]="currentTask.isCompleted"
         >
           Create child
         </app-button>
         <app-button
-          *ngIf="showAddProgressButton(currentTask)"
+          *ngIf="!currentTask.isHidden && showAddProgressButton(currentTask)"
           (click)="openLogModal()"
         >
           Add progress log
         </app-button>
         <app-button
-          *ngIf="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+          *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
           [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
           (click)="toggleTracking(currentTask)"
         >
           {{ activeTrackingTaskId() === currentTask.id ? 'Stop tracking' : 'Start tracking' }}
+        </app-button>
+        <app-button
+          *ngIf="!currentTask.isHidden"
+          appearance="outline-grayscale"
+          (click)="confirmDeleteTask(currentTask)"
+        >
+          Delete
+        </app-button>
+        <app-button *ngIf="currentTask.isHidden" appearance="outline-grayscale" (click)="restoreTask(currentTask)">
+          Restore task
         </app-button>
       </div>
 
@@ -124,6 +141,7 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
           (editTask)="openEditModal($event)"
           (logProgress)="openTaskLog($event)"
           (toggleTracking)="toggleTracking($event)"
+          (deleteTask)="confirmDeleteTask($event)"
         />
       </div>
 
@@ -362,7 +380,7 @@ export class TaskDetailPage implements OnInit {
 
   openCreateChildModal(): void {
     const t = this.task();
-    if (!t || t.trackerType !== TrackerType.SUBTASK || t.isCompleted) {
+    if (!t || t.isHidden || t.trackerType !== TrackerType.SUBTASK || t.isCompleted) {
       return;
     }
     const data: CreateTaskDialogData = {
@@ -379,6 +397,9 @@ export class TaskDetailPage implements OnInit {
   }
 
   openEditModal(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     const data: EditTaskDialogData = {
       task,
       onSuccess: () => {
@@ -397,10 +418,16 @@ export class TaskDetailPage implements OnInit {
   }
 
   openTaskLog(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
   }
 
   toggleTracking(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     const current = this.trackingStore.currentSession();
     if (current?.taskId === task.id) {
       this.openLogModal(this.trackingStore.elapsedMinutes(), true);
@@ -441,7 +468,7 @@ export class TaskDetailPage implements OnInit {
 
   openLogModal(prefillElapsedMinutes?: number, stopTrackingAfterSave = false): void {
     const t = this.task();
-    if (!this.logDialog || !t || t.trackerType === TrackerType.SUBTASK) {
+    if (!this.logDialog || !t || t.isHidden || t.trackerType === TrackerType.SUBTASK) {
       return;
     }
     this.pendingStopTrackingForTaskId = stopTrackingAfterSave ? t.id : null;
@@ -492,6 +519,48 @@ export class TaskDetailPage implements OnInit {
     return `${h}h ${m}m`;
   }
 
+  confirmDeleteTask(task: TaskBase): void {
+    const data: ConfirmActionDialogData = {
+      message:
+        'Are you sure you want to delete this task? Tasks with tracked progress will be archived to keep your statistics accurate.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      danger: true,
+    };
+    this.dialogs
+      .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+        label: 'Delete task?',
+        data,
+      })
+      .subscribe((ok) => {
+        if (!ok) {
+          return;
+        }
+        this.tasksApi.delete(task.id).subscribe(() => {
+          const isStillVisible = !task.isHidden;
+          if (this.activeTrackingTaskId() === task.id) {
+            this.trackingStore.loadCurrent();
+          }
+          if (isStillVisible) {
+            void this.router.navigate(['/tasks']);
+            return;
+          }
+          this.loadTask(task.id);
+          this.loadSubtaskTree(task.id);
+        });
+      });
+  }
+
+  restoreTask(task: TaskBase): void {
+    if (!task.isHidden) {
+      return;
+    }
+    this.tasksApi.restore(task.id).subscribe((restored) => {
+      this.task.set(restored);
+      this.loadSubtaskTree(restored.id);
+    });
+  }
+
   private patchLogFormFromTask(t: TaskBase): void {
     const m = t.trackerMetadata as Record<string, unknown>;
     const { hours: tsH, minutes: tsM } = splitMinutesToHoursMinutes(0);
@@ -533,7 +602,7 @@ export class TaskDetailPage implements OnInit {
   }
 
   submitLog(task: TaskBase, completeWith: (value?: unknown) => void): void {
-    if (task.isCompleted || task.trackerType === TrackerType.SUBTASK) {
+    if (task.isHidden || task.isCompleted || task.trackerType === TrackerType.SUBTASK) {
       return;
     }
     const err = this.computeProgressValidationError(task);
@@ -603,7 +672,7 @@ export class TaskDetailPage implements OnInit {
 
   private handleLogQueryIfPresent(): void {
     const currentTask = this.task();
-    if (!currentTask || this.route.snapshot.queryParamMap.get('log') !== '1') {
+    if (!currentTask || currentTask.isHidden || this.route.snapshot.queryParamMap.get('log') !== '1') {
       return;
     }
     const elapsed = Number(this.route.snapshot.queryParamMap.get('elapsed') ?? 0);
@@ -618,7 +687,8 @@ export class TaskDetailPage implements OnInit {
   }
 
   private loadSubtaskTree(taskId: string): void {
-    this.tasksApi.getTree().subscribe((roots) => {
+    const includeHidden = this.task()?.isHidden ?? false;
+    this.tasksApi.getTree(includeHidden).subscribe((roots) => {
       const self = findNodeInTree(roots, taskId);
       this.subtaskTree.set(self ? applyDisplaySort(self.children) : []);
     });

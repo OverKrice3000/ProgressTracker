@@ -32,6 +32,8 @@ import {
   filterTreeBySearch,
 } from './task-tree.utils';
 
+const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
+
 @Component({
   selector: 'app-tasks-page',
   standalone: true,
@@ -99,6 +101,14 @@ import {
               class="w-full rounded border border-slate-300 p-2"
             />
           </label>
+            <label class="flex cursor-pointer items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                [checked]="showArchived()"
+                (change)="setShowArchived($event)"
+              />
+              Show Archived
+            </label>
           </div>
         </div>
       </div>
@@ -117,6 +127,8 @@ import {
           (editTask)="openEditModal($event)"
           (logProgress)="openTaskLog($event)"
           (toggleTracking)="toggleTracking($event)"
+          (deleteTask)="deleteTask($event)"
+          (restoreTask)="restoreTask($event)"
         />
       </ng-container>
 
@@ -134,6 +146,8 @@ import {
               (editTask)="openEditModal($event)"
               (logProgress)="openTaskLog($event)"
               (toggleTracking)="toggleTracking($event)"
+              (deleteTask)="deleteTask($event)"
+              (restoreTask)="restoreTask($event)"
             />
           </section>
         </div>
@@ -154,6 +168,7 @@ export class TasksPage implements OnInit {
   readonly tree = signal<TaskTreeNode[]>([]);
   readonly recentTasks = signal<TaskBase[]>([]);
   readonly searchQuery = signal('');
+  readonly showArchived = signal(false);
   readonly completionFilter = signal<'all' | 'active' | 'completed'>('all');
   readonly trackerFilter = signal<string>('');
   readonly activeTrackingTaskId = computed(() => this.trackingStore.currentSession()?.taskId ?? null);
@@ -179,6 +194,7 @@ export class TasksPage implements OnInit {
   readonly recentBucketRows = computed(() => buildRecentBucketRows(this.filteredRecent()));
 
   ngOnInit(): void {
+    this.showArchived.set(localStorage.getItem(SHOW_ARCHIVED_STORAGE_KEY) === 'true');
     this.loadTree();
     this.trackingStore.loadCurrent();
   }
@@ -199,6 +215,16 @@ export class TasksPage implements OnInit {
 
   onSearchInput(event: Event): void {
     this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  setShowArchived(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.showArchived.set(checked);
+    localStorage.setItem(SHOW_ARCHIVED_STORAGE_KEY, String(checked));
+    this.loadTree();
+    if (this.viewMode() === 'recent') {
+      this.loadRecent();
+    }
   }
 
   toggleFolderExpand(taskId: string): void {
@@ -244,6 +270,9 @@ export class TasksPage implements OnInit {
   }
 
   openEditModal(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     const data: EditTaskDialogData = {
       task,
       onSuccess: () => {
@@ -260,10 +289,16 @@ export class TasksPage implements OnInit {
   }
 
   openTaskLog(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
   }
 
   toggleTracking(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
     const current = this.trackingStore.currentSession();
     if (current?.taskId === task.id) {
       void this.router.navigate(['/task', task.id], {
@@ -308,8 +343,52 @@ export class TasksPage implements OnInit {
       });
   }
 
+  deleteTask(task: TaskBase): void {
+    if (task.isHidden) {
+      return;
+    }
+    const data: ConfirmActionDialogData = {
+      message:
+        'Are you sure you want to delete this task? Tasks with tracked progress will be archived to keep your statistics accurate.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      danger: true,
+    };
+    this.dialogs
+      .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
+        label: 'Delete task?',
+        data,
+      })
+      .subscribe((ok) => {
+        if (!ok) {
+          return;
+        }
+        this.tasksApi.delete(task.id).subscribe(() => {
+          this.loadTree();
+          if (this.viewMode() === 'recent') {
+            this.loadRecent();
+          }
+          if (this.activeTrackingTaskId() === task.id) {
+            this.trackingStore.loadCurrent();
+          }
+        });
+      });
+  }
+
+  restoreTask(task: TaskBase): void {
+    if (!task.isHidden) {
+      return;
+    }
+    this.tasksApi.restore(task.id).subscribe(() => {
+      this.loadTree();
+      if (this.viewMode() === 'recent') {
+        this.loadRecent();
+      }
+    });
+  }
+
   private loadTree(): void {
-    this.tasksApi.getTree().subscribe((t) => this.tree.set(t));
+    this.tasksApi.getTree(this.showArchived()).subscribe((t) => this.tree.set(t));
   }
 
   private loadRecent(): void {
@@ -318,6 +397,7 @@ export class TasksPage implements OnInit {
       .getRecentLeaves({
         isCompleted: c === 'all' ? undefined : c === 'completed',
         trackerType: this.trackerFilter() ? (this.trackerFilter() as TrackerType) : undefined,
+        includeHidden: this.showArchived(),
       })
       .subscribe((tasks) => this.recentTasks.set(tasks));
   }

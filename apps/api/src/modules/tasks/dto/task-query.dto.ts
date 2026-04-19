@@ -11,6 +11,10 @@ export class TaskQueryDto {
   isCompleted?: string;
 
   @IsOptional()
+  @IsBooleanString()
+  includeHidden?: string;
+
+  @IsOptional()
   @IsEnum(TrackerType)
   trackerType?: TrackerType;
 

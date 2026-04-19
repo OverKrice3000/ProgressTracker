@@ -36,6 +36,7 @@ model Task {
   description     String?
   avatarUrl       String?       @map("avatar_url")
   isCompleted     Boolean       @default(false) @map("is_completed")
+  isHidden        Boolean       @default(false) @map("is_hidden")
   trackerType     TrackerType   @map("tracker_type")
   trackerMetadata Json          @default("{}") @map("tracker_metadata")
   createdAt       DateTime      @default(now()) @map("created_at")

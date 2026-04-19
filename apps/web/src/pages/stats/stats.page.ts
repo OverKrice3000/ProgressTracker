@@ -257,7 +257,7 @@ export class StatsPage implements OnInit {
     const { from, to, idleHours } = this.form.getRawValue();
     forkJoin({
       summary: this.statsApi.getSummary(from, to, idleHours),
-      tree: this.tasksApi.getTree(),
+      tree: this.tasksApi.getTree(true),
     }).subscribe(({ summary, tree }) => {
       this.summary.set(summary);
       this.taskTree.set(tree);

@@ -52,6 +52,9 @@ export class TasksService {
 
   async findMany(userId: string, query: TaskQueryDto): Promise<Task[]> {
     const where: Prisma.TaskWhereInput = { userId };
+    if (query.includeHidden !== 'true') {
+      where.isHidden = false;
+    }
     if (query.rootOnly === 'true') {
       where.parentId = null;
     }
@@ -82,6 +85,7 @@ export class TasksService {
   ): Promise<(Task & { lastTrackedAt: string })[]> {
     const where: Prisma.TaskWhereInput = {
       userId,
+      ...(query.includeHidden === 'true' ? {} : { isHidden: false }),
       children: { none: {} },
       progressLogs: { some: {} },
     };
@@ -153,7 +157,18 @@ export class TasksService {
 
   async findTree(userId: string): Promise<TaskTreeNode[]> {
     const tasks = await this.prisma.task.findMany({
-      where: { userId },
+      where: { userId, isHidden: false },
+      orderBy: [{ depth: 'asc' }, { name: 'asc' }],
+    });
+    return this.buildTree(tasks);
+  }
+
+  async findTreeWithOptions(userId: string, includeHidden: boolean): Promise<TaskTreeNode[]> {
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        userId,
+        ...(includeHidden ? {} : { isHidden: false }),
+      },
       orderBy: [{ depth: 'asc' }, { name: 'asc' }],
     });
     return this.buildTree(tasks);
@@ -213,6 +228,9 @@ export class TasksService {
     const task = await this.findById(userId, taskId);
     if (task.trackerType === TrackerType.SUBTASK) {
       throw new BadRequestException('Folders cannot be tracked directly');
+    }
+    if (task.isHidden) {
+      throw new BadRequestException('Archived tasks cannot be tracked');
     }
     if (task.isCompleted) {
       throw new BadRequestException('Completed tasks cannot be tracked');
@@ -302,6 +320,117 @@ export class TasksService {
       stopTime: stopTime.toISOString(),
       elapsedMinutes,
     };
+  }
+
+  async deleteOrArchive(
+    userId: string,
+    taskId: string,
+  ): Promise<{ archivedTaskIds: string[]; deletedTaskIds: string[] }> {
+    const root = await this.findById(userId, taskId);
+    const allTasks = await this.prisma.task.findMany({
+      where: { userId },
+      select: { id: true, parentId: true },
+    });
+    const childrenByParent = new Map<string, string[]>();
+    for (const task of allTasks) {
+      if (!task.parentId) {
+        continue;
+      }
+      const existing = childrenByParent.get(task.parentId) ?? [];
+      existing.push(task.id);
+      childrenByParent.set(task.parentId, existing);
+    }
+
+    const subtreeIds: string[] = [];
+    const stack = [root.id];
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      subtreeIds.push(currentId);
+      const children = childrenByParent.get(currentId) ?? [];
+      for (const childId of children) {
+        stack.push(childId);
+      }
+    }
+
+    const logCounts = await this.prisma.progressLog.groupBy({
+      by: ['taskId'],
+      where: { userId, taskId: { in: subtreeIds } },
+      _count: { _all: true },
+    });
+    const hasHistory = new Set(logCounts.map((row) => row.taskId));
+
+    const archivedTaskIds = new Set<string>();
+    const deletedTaskIds = new Set<string>();
+    const walk = (currentId: string): boolean => {
+      const childIds = childrenByParent.get(currentId) ?? [];
+      let branchHasHistory = hasHistory.has(currentId);
+      for (const childId of childIds) {
+        if (walk(childId)) {
+          branchHasHistory = true;
+        }
+      }
+      if (branchHasHistory) {
+        archivedTaskIds.add(currentId);
+      } else {
+        deletedTaskIds.add(currentId);
+      }
+      return branchHasHistory;
+    };
+    walk(root.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(
+        Prisma.sql`DELETE FROM current_sessions WHERE user_id = ${userId} AND task_id IN (${Prisma.join(subtreeIds)})`,
+      );
+      if (archivedTaskIds.size > 0) {
+        await tx.task.updateMany({
+          where: { userId, id: { in: [...archivedTaskIds] } },
+          data: { isHidden: true },
+        });
+      }
+      if (deletedTaskIds.size > 0) {
+        await tx.task.deleteMany({
+          where: { userId, id: { in: [...deletedTaskIds] } },
+        });
+      }
+    });
+
+    return {
+      archivedTaskIds: [...archivedTaskIds],
+      deletedTaskIds: [...deletedTaskIds],
+    };
+  }
+
+  async restore(userId: string, taskId: string): Promise<Task> {
+    await this.findById(userId, taskId);
+    const allTasks = await this.prisma.task.findMany({
+      where: { userId },
+      select: { id: true, parentId: true },
+    });
+    const childrenByParent = new Map<string, string[]>();
+    for (const task of allTasks) {
+      if (!task.parentId) {
+        continue;
+      }
+      const existing = childrenByParent.get(task.parentId) ?? [];
+      existing.push(task.id);
+      childrenByParent.set(task.parentId, existing);
+    }
+    const subtreeIds: string[] = [];
+    const stack = [taskId];
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      subtreeIds.push(currentId);
+      const children = childrenByParent.get(currentId) ?? [];
+      for (const childId of children) {
+        stack.push(childId);
+      }
+    }
+    await this.prisma.task.updateMany({
+      where: { userId, id: { in: subtreeIds } },
+      data: { isHidden: false },
+    });
+    return this.findById(userId, taskId);
   }
 
   private buildTree(tasks: Task[]): TaskTreeNode[] {

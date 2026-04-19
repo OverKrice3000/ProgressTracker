@@ -9,6 +9,7 @@ export interface TaskBase {
   description: string | null;
   avatarUrl: string | null;
   isCompleted: boolean;
+  isHidden: boolean;
   trackerType: TrackerType;
   trackerMetadata: Record<string, unknown>;
   /** Present for recent leaf tasks from API. */

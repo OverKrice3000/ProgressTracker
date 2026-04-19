@@ -27,6 +27,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
         class="absolute right-0 z-20 mt-2 w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
       >
         <button
+          *ngIf="showEditOption"
           type="button"
           class="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
           (click)="handleEdit($event)"
@@ -52,6 +53,22 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
         >
           {{ isTrackingActive ? 'Stop tracking' : 'Start tracking' }}
         </button>
+        <button
+          *ngIf="showDeleteOption"
+          type="button"
+          class="block w-full rounded-md px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
+          (click)="handleDelete($event)"
+        >
+          Delete task
+        </button>
+        <button
+          *ngIf="showRestoreOption"
+          type="button"
+          class="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+          (click)="handleRestore($event)"
+        >
+          Restore task
+        </button>
       </div>
     </div>
   `,
@@ -62,13 +79,18 @@ export class TaskActionsMenuComponent implements OnInit, OnDestroy {
   private detachOutsidePointerDown?: () => void;
 
   @Input() canLogProgress = true;
+  @Input() showEditOption = true;
   @Input() showLogProgressOption = true;
   @Input() showTrackingOption = false;
   @Input() isTrackingActive = false;
+  @Input() showDeleteOption = true;
+  @Input() showRestoreOption = false;
 
   @Output() editTask = new EventEmitter<void>();
   @Output() logProgress = new EventEmitter<void>();
   @Output() toggleTracking = new EventEmitter<void>();
+  @Output() deleteTask = new EventEmitter<void>();
+  @Output() restoreTask = new EventEmitter<void>();
 
   readonly menuOpen = signal(false);
 
@@ -121,5 +143,19 @@ export class TaskActionsMenuComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     this.menuOpen.set(false);
     this.toggleTracking.emit();
+  }
+
+  handleDelete(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuOpen.set(false);
+    this.deleteTask.emit();
+  }
+
+  handleRestore(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuOpen.set(false);
+    this.restoreTask.emit();
   }
 }

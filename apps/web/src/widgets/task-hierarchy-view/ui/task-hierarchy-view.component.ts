@@ -29,7 +29,10 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
       role="group"
     >
       <li *ngFor="let node of nodes" class="flex flex-col gap-2" role="treeitem" [attr.aria-expanded]="ariaExpanded(node)">
-        <div class="grid grid-cols-[auto,auto,1fr,auto,auto] items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
+        <div
+          class="grid grid-cols-[auto,auto,1fr,auto,auto] items-center gap-2 rounded-xl bg-white p-3 shadow-sm"
+          [class.opacity-60]="node.isHidden"
+        >
           <div class="flex h-8 w-8 shrink-0 items-center justify-center">
             <button
               *ngIf="isExpandableFolder(node)"
@@ -67,6 +70,12 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
                 </span>
               </a>
               <span
+                *ngIf="node.isHidden"
+                class="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+              >
+                Archived
+              </span>
+              <span
                 *ngIf="activeTrackingTaskId === node.id"
                 class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
               >
@@ -85,12 +94,17 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           <div class="self-center justify-self-end">
             <app-task-actions-menu
               [canLogProgress]="canLogProgress(node)"
-              [showLogProgressOption]="node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
-              [showTrackingOption]="node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
+              [showEditOption]="!node.isHidden"
+              [showLogProgressOption]="!node.isHidden && node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
+              [showTrackingOption]="!node.isHidden && node.trackerType !== trackerType.SUBTASK && !node.isCompleted"
               [isTrackingActive]="activeTrackingTaskId === node.id"
+              [showDeleteOption]="!node.isHidden"
+              [showRestoreOption]="node.isHidden"
               (editTask)="editTask.emit(node)"
               (logProgress)="logProgress.emit(node)"
               (toggleTracking)="toggleTracking.emit(node)"
+              (deleteTask)="deleteTask.emit(node)"
+              (restoreTask)="restoreTask.emit(node)"
             />
           </div>
         </div>
@@ -106,6 +120,8 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           (editTask)="editTask.emit($event)"
           (logProgress)="logProgress.emit($event)"
           (toggleTracking)="toggleTracking.emit($event)"
+          (deleteTask)="deleteTask.emit($event)"
+          (restoreTask)="restoreTask.emit($event)"
         />
       </li>
     </ul>
@@ -125,6 +141,8 @@ export class TaskHierarchyViewComponent {
   @Output() editTask = new EventEmitter<TaskTreeNode>();
   @Output() logProgress = new EventEmitter<TaskTreeNode>();
   @Output() toggleTracking = new EventEmitter<TaskTreeNode>();
+  @Output() deleteTask = new EventEmitter<TaskTreeNode>();
+  @Output() restoreTask = new EventEmitter<TaskTreeNode>();
 
   isExpanded(id: string): boolean {
     return this.expandedFolderIds.has(id);
