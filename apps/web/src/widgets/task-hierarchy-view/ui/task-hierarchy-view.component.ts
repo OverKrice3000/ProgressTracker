@@ -2,7 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
+import { showAddProgressOnListRow } from '../../../entities/task/lib/task-progress-helpers';
 import { TaskTreeNode } from '../../../entities/task/model/task.types';
+import { TaskActionsMenuComponent } from '../../../entities/task/ui/task-actions-menu.component';
 import { TaskAvatarComponent } from '../../../entities/task/ui/task-avatar.component';
 import { TaskStatusBadgeComponent } from '../../../entities/task/ui/task-status-badge.component';
 import { TrackerTypeLabelPipe } from '../../../entities/task/ui/tracker-type-label.pipe';
@@ -14,6 +16,7 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
   imports: [
     CommonModule,
     RouterLink,
+    TaskActionsMenuComponent,
     TaskAvatarComponent,
     TaskStatusBadgeComponent,
     TaskHierarchyViewComponent,
@@ -27,7 +30,7 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
       role="group"
     >
       <li *ngFor="let node of nodes" class="flex flex-col gap-2" role="treeitem" [attr.aria-expanded]="ariaExpanded(node)">
-        <div class="grid grid-cols-[auto,auto,1fr,auto] items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
+        <div class="grid grid-cols-[auto,auto,1fr,auto,auto] items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
           <div class="flex h-8 w-8 shrink-0 items-center justify-center">
             <button
               *ngIf="isExpandableFolder(node)"
@@ -68,8 +71,17 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
             </p>
           </div>
 
-          <div *ngIf="node.trackerType !== trackerType.SUBTASK" class="flex items-center gap-2">
-            <app-task-status-badge [isCompleted]="node.isCompleted" />
+          <div class="flex min-h-8 items-center justify-end gap-2">
+            <app-task-status-badge *ngIf="node.trackerType !== trackerType.SUBTASK" [isCompleted]="node.isCompleted" />
+          </div>
+
+          <div class="self-center justify-self-end">
+            <app-task-actions-menu
+              [canLogProgress]="canLogProgress(node)"
+              [showLogProgressOption]="node.trackerType !== trackerType.SUBTASK"
+              (editTask)="editTask.emit(node)"
+              (logProgress)="logProgress.emit(node)"
+            />
           </div>
         </div>
 
@@ -80,6 +92,8 @@ import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.p
           [expandedFolderIds]="expandedFolderIds"
           [depth]="depth + 1"
           (folderExpandToggle)="folderExpandToggle.emit($event)"
+          (editTask)="editTask.emit($event)"
+          (logProgress)="logProgress.emit($event)"
         />
       </li>
     </ul>
@@ -95,6 +109,8 @@ export class TaskHierarchyViewComponent {
   @Input({ required: true }) expandedFolderIds!: Set<string>;
 
   @Output() folderExpandToggle = new EventEmitter<string>();
+  @Output() editTask = new EventEmitter<TaskTreeNode>();
+  @Output() logProgress = new EventEmitter<TaskTreeNode>();
 
   isExpanded(id: string): boolean {
     return this.expandedFolderIds.has(id);
@@ -127,5 +143,9 @@ export class TaskHierarchyViewComponent {
     event.preventDefault();
     event.stopPropagation();
     this.folderExpandToggle.emit(taskId);
+  }
+
+  canLogProgress(node: TaskTreeNode): boolean {
+    return showAddProgressOnListRow(node);
   }
 }

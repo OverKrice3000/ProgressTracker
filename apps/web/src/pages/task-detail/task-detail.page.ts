@@ -17,7 +17,12 @@ import {
 import { combineHoursMinutes, splitMinutesToHoursMinutes } from '../../features/tasks/lib/duration-minutes';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { TaskStatusBadgeComponent } from '../../entities/task/ui/task-status-badge.component';
+import { TaskActionsMenuComponent } from '../../entities/task/ui/task-actions-menu.component';
 import { TrackerTypeLabelPipe } from '../../entities/task/ui/tracker-type-label.pipe';
+import {
+  EditTaskDialogComponent,
+  EditTaskDialogData,
+} from '../../features/tasks/ui/edit-task-dialog.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
 
@@ -29,16 +34,33 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
     ReactiveFormsModule,
     AppButtonComponent,
     TaskStatusBadgeComponent,
+    TaskActionsMenuComponent,
     TaskHierarchyViewComponent,
     TrackerTypeLabelPipe,
   ],
   template: `
     <section class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4" *ngIf="task() as currentTask">
       <div class="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
-        <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
+        <div class="flex items-start justify-between gap-3">
+          <h1 class="text-2xl font-semibold">{{ currentTask.name }}</h1>
+          <div class="flex items-center gap-2">
+            <app-button appearance="outline-grayscale" size="s" (click)="openEditModal(currentTask)">
+              Edit task
+            </app-button>
+            <app-task-actions-menu
+              [canLogProgress]="showAddProgressButton(currentTask)"
+              [showLogProgressOption]="currentTask.trackerType !== trackerType.SUBTASK"
+              (editTask)="openEditModal(currentTask)"
+              (logProgress)="openLogModal()"
+            />
+          </div>
+        </div>
         <p class="text-sm text-slate-600">{{ currentTask.description }}</p>
         <p class="text-xs text-slate-500">Type: {{ currentTask.trackerType | trackerTypeLabel }}</p>
-        <app-task-status-badge [isCompleted]="currentTask.isCompleted" />
+        <app-task-status-badge
+          *ngIf="currentTask.trackerType !== trackerType.SUBTASK"
+          [isCompleted]="currentTask.isCompleted"
+        />
       </div>
 
       <ng-container [ngSwitch]="currentTask.trackerType">
@@ -75,6 +97,8 @@ import { applyDisplaySort, findNodeInTree } from '../tasks/task-tree.utils';
           [searchQuery]="''"
           [expandedFolderIds]="subtaskExpandedFolderIds()"
           (folderExpandToggle)="toggleSubtaskFolder($event)"
+          (editTask)="openEditModal($event)"
+          (logProgress)="openTaskLog($event)"
         />
       </div>
 
@@ -302,6 +326,28 @@ export class TaskDetailPage implements OnInit {
       label: 'Create task',
       data,
     }).subscribe();
+  }
+
+  openEditModal(task: TaskBase): void {
+    const data: EditTaskDialogData = {
+      task,
+      onSuccess: () => {
+        const currentId = this.route.snapshot.paramMap.get('id');
+        if (!currentId) {
+          return;
+        }
+        this.loadTask(currentId);
+        this.loadSubtaskTree(currentId);
+      },
+    };
+    this.dialogs.open(new PolymorpheusComponent(EditTaskDialogComponent), {
+      label: 'Edit task',
+      data,
+    }).subscribe();
+  }
+
+  openTaskLog(task: TaskBase): void {
+    void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
   }
 
   openLogModal(): void {

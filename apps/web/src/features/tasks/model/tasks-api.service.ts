@@ -51,6 +51,10 @@ export class TasksApiService {
     return this.http.post<TaskBase>('api/tasks', payload, { withCredentials: true });
   }
 
+  update(taskId: string, payload: { name: string; description: string }): Observable<TaskBase> {
+    return this.http.patch<TaskBase>(`api/tasks/${taskId}`, payload, { withCredentials: true });
+  }
+
   addLog(taskId: string, payload: { timeSpentMinutes: number; trackerMetadata: Record<string, unknown> }) {
     return this.http.post(`api/tasks/${taskId}/logs`, payload, { withCredentials: true });
   }

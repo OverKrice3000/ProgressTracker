@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { TrackerType } from '@progress-tracker/contracts';
@@ -11,6 +12,10 @@ import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
 } from '../../features/tasks/ui/create-task-dialog.component';
+import {
+  EditTaskDialogComponent,
+  EditTaskDialogData,
+} from '../../features/tasks/ui/edit-task-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { TaskListViewComponent } from '../../widgets/task-list-view/ui/task-list-view.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
@@ -103,6 +108,8 @@ import {
           [searchQuery]="searchQuery()"
           [expandedFolderIds]="expandedFolderIds()"
           (folderExpandToggle)="toggleFolderExpand($event)"
+          (editTask)="openEditModal($event)"
+          (logProgress)="openTaskLog($event)"
         />
       </ng-container>
 
@@ -116,6 +123,8 @@ import {
             <app-task-list-view
               [tasks]="row.tasks"
               [searchQuery]="searchQuery()"
+              (editTask)="openEditModal($event)"
+              (logProgress)="openTaskLog($event)"
             />
           </section>
         </div>
@@ -126,6 +135,7 @@ import {
 export class TasksPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly dialogs = inject(TuiDialogService);
+  private readonly router = inject(Router);
 
   readonly trackerTypes = TRACKER_TYPES_IN_DISPLAY_ORDER;
   readonly viewMode = signal<'hierarchy' | 'recent'>('hierarchy');
@@ -219,6 +229,26 @@ export class TasksPage implements OnInit {
       label: 'Create task',
       data,
     }).subscribe();
+  }
+
+  openEditModal(task: TaskBase): void {
+    const data: EditTaskDialogData = {
+      task,
+      onSuccess: () => {
+        this.loadTree();
+        if (this.viewMode() === 'recent') {
+          this.loadRecent();
+        }
+      },
+    };
+    this.dialogs.open(new PolymorpheusComponent(EditTaskDialogComponent), {
+      label: 'Edit task',
+      data,
+    }).subscribe();
+  }
+
+  openTaskLog(task: TaskBase): void {
+    void this.router.navigate(['/task', task.id], { queryParams: { log: '1' } });
   }
 
   private loadTree(): void {

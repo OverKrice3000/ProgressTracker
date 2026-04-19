@@ -3,6 +3,7 @@ import { Prisma, Task, TrackerType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 export interface TaskTreeNode extends Task {
   children: TaskTreeNode[];
@@ -116,6 +117,24 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
     return task;
+  }
+
+  async update(userId: string, taskId: string, dto: UpdateTaskDto): Promise<Task> {
+    const task = await this.findById(userId, taskId);
+    const data: Prisma.TaskUpdateInput = {};
+    if (dto.name !== undefined) {
+      data.name = dto.name;
+    }
+    if (dto.description !== undefined) {
+      data.description = dto.description;
+    }
+    if (Object.keys(data).length === 0) {
+      return task;
+    }
+    return this.prisma.task.update({
+      where: { id: task.id },
+      data,
+    });
   }
 
   async findChildren(userId: string, parentId: string): Promise<Task[]> {
