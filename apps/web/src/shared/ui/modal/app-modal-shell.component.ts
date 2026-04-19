@@ -4,11 +4,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   selector: 'app-modal-shell',
   standalone: true,
   template: `
-    <section class="grid gap-4 p-1">
+    <section class="grid gap-6 p-1">
       <header class="text-lg font-semibold">
         <ng-content select="[modal-title]" />
       </header>
-      <div class="grid gap-3">
+      <div class="grid gap-4">
         <ng-content />
       </div>
       <footer class="flex justify-end gap-2">

@@ -11,15 +11,16 @@ import { AppInputComponent } from '../../shared/ui/input/app-input.component';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, AppInputComponent],
   template: `
-    <section class="mx-auto mt-12 w-full max-w-md rounded-2xl bg-white p-6 shadow-md">
-      <h1 class="mb-1 text-2xl font-semibold text-slate-900">Login</h1>
-      <p class="mb-6 text-sm text-slate-500">Sign in to continue to the dashboard.</p>
+    <section class="mx-auto mt-12 flex w-full max-w-md flex-col gap-8 rounded-2xl bg-white p-8 shadow-md">
+      <div class="space-y-2">
+        <h1 class="text-2xl font-semibold text-slate-900">Login</h1>
+        <p class="text-sm text-slate-500">Sign in to continue to the dashboard.</p>
+      </div>
 
-      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6">
         <app-input
           label="Username"
           [control]="form.controls.username"
-          hint="Use your unique account name"
           error="Username is required"
         />
         <app-input
@@ -33,7 +34,7 @@ import { AppInputComponent } from '../../shared/ui/input/app-input.component';
         </app-button>
       </form>
 
-      <p *ngIf="error()" class="mt-3 text-sm text-rose-600">{{ error() }}</p>
+      <p *ngIf="error()" class="text-sm text-rose-600">{{ error() }}</p>
     </section>
   `,
 })

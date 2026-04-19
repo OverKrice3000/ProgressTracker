@@ -1,0 +1,131 @@
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { TrackerType } from '@progress-tracker/contracts';
+import { TaskTreeNode } from '../../../entities/task/model/task.types';
+import { TaskAvatarComponent } from '../../../entities/task/ui/task-avatar.component';
+import { TaskStatusBadgeComponent } from '../../../entities/task/ui/task-status-badge.component';
+import { TrackerTypeLabelPipe } from '../../../entities/task/ui/tracker-type-label.pipe';
+import { TaskNameSegmentsPipe } from '../../../shared/pipes/task-name-segments.pipe';
+
+@Component({
+  selector: 'app-task-hierarchy-view',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    TaskAvatarComponent,
+    TaskStatusBadgeComponent,
+    TaskHierarchyViewComponent,
+    TaskNameSegmentsPipe,
+    TrackerTypeLabelPipe,
+  ],
+  template: `
+    <ul
+      class="flex flex-col gap-2 border-l border-transparent"
+      [class.ml-6]="depth > 0"
+      role="group"
+    >
+      <li *ngFor="let node of nodes" class="flex flex-col gap-2" role="treeitem" [attr.aria-expanded]="ariaExpanded(node)">
+        <div class="grid grid-cols-[auto,auto,1fr,auto] items-center gap-2 rounded-xl bg-white p-3 shadow-sm">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center">
+            <button
+              *ngIf="isExpandableFolder(node)"
+              type="button"
+              class="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
+              [attr.aria-expanded]="isExpanded(node.id)"
+              [attr.aria-label]="isExpanded(node.id) ? 'Collapse folder' : 'Expand folder'"
+              (click)="onChevronClick($event, node.id)"
+            >
+              <svg
+                class="h-5 w-5 transition-transform duration-150"
+                [class.rotate-90]="isExpanded(node.id)"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <app-task-avatar class="shrink-0" [avatarUrl]="node.avatarUrl" [taskName]="node.name" />
+
+          <div class="min-w-0 space-y-1">
+            <a
+              [routerLink]="['/task', node.id]"
+              class="line-clamp-1 text-sm font-semibold text-slate-900"
+              (click)="$event.stopPropagation()"
+            >
+              <span *ngFor="let s of (node.name | taskNameSegments:searchQuery)">
+                <span [class]="s.match ? 'rounded-sm bg-sky-100/90' : null">{{ s.text }}</span>
+              </span>
+            </a>
+            <p class="truncate text-xs text-slate-500">
+              {{ node.trackerType | trackerTypeLabel }}
+            </p>
+          </div>
+
+          <div *ngIf="node.trackerType !== trackerType.SUBTASK" class="flex items-center gap-2">
+            <app-task-status-badge [isCompleted]="node.isCompleted" />
+          </div>
+        </div>
+
+        <app-task-hierarchy-view
+          *ngIf="shouldShowChildren(node)"
+          [nodes]="node.children"
+          [searchQuery]="searchQuery"
+          [expandedFolderIds]="expandedFolderIds"
+          [depth]="depth + 1"
+          (folderExpandToggle)="folderExpandToggle.emit($event)"
+        />
+      </li>
+    </ul>
+  `,
+})
+export class TaskHierarchyViewComponent {
+  readonly trackerType = TrackerType;
+
+  @Input({ required: true }) nodes: TaskTreeNode[] = [];
+  @Input() searchQuery = '';
+  @Input() depth = 0;
+  /** IDs of folders that are expanded; set by the parent (Tasks or Task detail), shared at every nesting level. */
+  @Input({ required: true }) expandedFolderIds!: Set<string>;
+
+  @Output() folderExpandToggle = new EventEmitter<string>();
+
+  isExpanded(id: string): boolean {
+    return this.expandedFolderIds.has(id);
+  }
+
+  /** Folder (SUBTASK) rows that have children can expand/collapse. */
+  isExpandableFolder(node: TaskTreeNode): boolean {
+    return node.trackerType === TrackerType.SUBTASK && node.children.length > 0;
+  }
+
+  ariaExpanded(node: TaskTreeNode): boolean | null {
+    if (!this.isExpandableFolder(node)) {
+      return null;
+    }
+    return this.isExpanded(node.id);
+  }
+
+  /** Folders (SUBTASK) hide children until expanded; other parents with children stay visible (edge case). */
+  shouldShowChildren(node: TaskTreeNode): boolean {
+    if (node.children.length === 0) {
+      return false;
+    }
+    if (!this.isExpandableFolder(node)) {
+      return true;
+    }
+    return this.isExpanded(node.id);
+  }
+
+  onChevronClick(event: MouseEvent, taskId: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.folderExpandToggle.emit(taskId);
+  }
+}

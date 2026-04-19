@@ -1,25 +1,38 @@
-import { inject } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { filter, map, take } from 'rxjs';
-import { UserStore } from '../../entities/user/model/user.store';
+import { map, take } from 'rxjs';
+import { AuthApiService } from '../../features/auth/model/auth-api.service';
 
+/**
+ * Waits for `GET /api/auth/me` (via shared cached observable) before choosing a route.
+ *
+ * On **SSR**, there is no browser session in our setup (`/me` resolves to null), which used to
+ * redirect every protected URL to `/login` during server render, then the client would recover —
+ * causing a login → dashboard flash on refresh. We defer the real check to the browser.
+ */
 export const authGuard: CanActivateFn = () => {
-  const store = inject(UserStore);
+  const platformId = inject(PLATFORM_ID);
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
+  const authApi = inject(AuthApiService);
   const router = inject(Router);
-  return toObservable(store.isReady).pipe(
-    filter((ready) => ready),
+  return authApi.hydrateSession().pipe(
     take(1),
-    map(() => (store.isAuthenticated() ? true : router.createUrlTree(['/login']))),
+    map((user) => (user !== null ? true : router.createUrlTree(['/login']))),
   );
 };
 
 export const loginRedirectGuard: CanActivateFn = () => {
-  const store = inject(UserStore);
+  const platformId = inject(PLATFORM_ID);
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
+  const authApi = inject(AuthApiService);
   const router = inject(Router);
-  return toObservable(store.isReady).pipe(
-    filter((ready) => ready),
+  return authApi.hydrateSession().pipe(
     take(1),
-    map(() => (store.isAuthenticated() ? router.createUrlTree(['/dashboard']) : true)),
+    map((user) => (user !== null ? router.createUrlTree(['/dashboard']) : true)),
   );
 };

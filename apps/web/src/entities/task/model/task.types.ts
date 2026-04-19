@@ -11,6 +11,8 @@ export interface TaskBase {
   isCompleted: boolean;
   trackerType: TrackerType;
   trackerMetadata: Record<string, unknown>;
+  /** Present for recent leaf tasks from API. */
+  lastTrackedAt?: string;
 }
 
 export interface TaskTreeNode extends TaskBase {
@@ -26,6 +28,6 @@ export interface TaskFilters {
   rootOnly: boolean;
   isCompleted?: boolean;
   trackerType?: TrackerType;
-  sortBy: 'name' | 'trackerType' | 'depth';
+  sortBy: 'name' | 'trackerType' | 'depth' | 'recent';
   sortOrder: 'asc' | 'desc';
 }

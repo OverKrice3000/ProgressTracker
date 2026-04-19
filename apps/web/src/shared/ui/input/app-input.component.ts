@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TuiInputDirective } from '@taiga-ui/core/components/input';
 import { TuiLabel } from '@taiga-ui/core/components/label';
@@ -9,8 +9,9 @@ import { TuiTextfield } from '@taiga-ui/core/components/textfield';
   selector: 'app-input',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, TuiTextfield, TuiInputDirective, TuiLabel],
+  host: { class: 'block w-full' },
   template: `
-    <div class="space-y-1">
+    <div class="space-y-2">
       <tui-textfield>
         <label tuiLabel>{{ label }}</label>
         <input tuiInput [type]="type" [formControl]="control" />
@@ -21,7 +22,6 @@ import { TuiTextfield } from '@taiga-ui/core/components/textfield';
       </p>
     </div>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppInputComponent {
   @Input({ required: true }) label!: string;

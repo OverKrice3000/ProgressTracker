@@ -57,13 +57,54 @@ export class TasksService {
       where.trackerType = query.trackerType;
     }
 
-    const orderField = query.sortBy ?? 'name';
+    const rawSort = query.sortBy ?? 'name';
+    const orderField = rawSort === 'recent' ? 'name' : rawSort;
     const sortOrder = query.sortOrder ?? 'asc';
     return this.prisma.task.findMany({
       where,
       orderBy: {
         [orderField]: sortOrder,
       },
+    });
+  }
+
+  async findRecentLeafTasks(
+    userId: string,
+    query: TaskQueryDto,
+  ): Promise<(Task & { lastTrackedAt: string })[]> {
+    const where: Prisma.TaskWhereInput = {
+      userId,
+      children: { none: {} },
+      progressLogs: { some: {} },
+    };
+    if (query.isCompleted === 'true') {
+      where.isCompleted = true;
+    }
+    if (query.isCompleted === 'false') {
+      where.isCompleted = false;
+    }
+    if (query.trackerType) {
+      where.trackerType = query.trackerType;
+    }
+
+    const tasks = await this.prisma.task.findMany({
+      where,
+      include: {
+        progressLogs: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+          select: { timestamp: true },
+        },
+      },
+    });
+
+    return tasks.map((t) => {
+      const { progressLogs, ...rest } = t;
+      const latest = progressLogs[0]?.timestamp;
+      if (!latest) {
+        return { ...rest, lastTrackedAt: t.updatedAt.toISOString() };
+      }
+      return { ...rest, lastTrackedAt: latest.toISOString() };
     });
   }
 

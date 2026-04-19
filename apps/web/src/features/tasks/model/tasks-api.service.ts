@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { TrackerType } from '@progress-tracker/contracts';
 import { Observable } from 'rxjs';
 import { TaskBase, TaskFilters, TaskTreeNode } from '../../../entities/task/model/task.types';
 
@@ -25,6 +26,21 @@ export class TasksApiService {
 
   getTask(taskId: string): Observable<TaskBase> {
     return this.http.get<TaskBase>(`api/tasks/${taskId}`, { withCredentials: true });
+  }
+
+  getChildren(taskId: string): Observable<TaskBase[]> {
+    return this.http.get<TaskBase[]>(`api/tasks/${taskId}/children`, { withCredentials: true });
+  }
+
+  getRecentLeaves(filters: { isCompleted?: boolean; trackerType?: TrackerType }): Observable<TaskBase[]> {
+    let params = new HttpParams();
+    if (filters.isCompleted !== undefined) {
+      params = params.set('isCompleted', String(filters.isCompleted));
+    }
+    if (filters.trackerType) {
+      params = params.set('trackerType', filters.trackerType);
+    }
+    return this.http.get<TaskBase[]>('api/tasks/recent-leaves', { params, withCredentials: true });
   }
 
   getTree(): Observable<TaskTreeNode[]> {

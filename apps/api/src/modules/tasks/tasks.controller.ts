@@ -25,6 +25,11 @@ export class TasksController {
     return this.tasksService.findTree(userId);
   }
 
+  @Get('recent-leaves')
+  recentLeaves(@CurrentUserId() userId: string, @Query() query: TaskQueryDto) {
+    return this.tasksService.findRecentLeafTasks(userId, query);
+  }
+
   @Get(':id')
   getById(@CurrentUserId() userId: string, @Param('id') taskId: string) {
     return this.tasksService.findById(userId, taskId);

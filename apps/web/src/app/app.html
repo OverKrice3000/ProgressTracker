@@ -1,6 +1,36 @@
 <tui-root>
   @if (userStore.isReady()) {
-    <main class="app-shell min-h-screen">
+    <main class="app-shell flex min-h-screen flex-col pb-10">
+      @if (showHeader()) {
+        <header class="border-b border-slate-200 bg-white">
+          <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+            <nav class="flex flex-wrap items-center gap-4 text-sm">
+              <a
+                routerLink="/dashboard"
+                routerLinkActive="text-blue-600"
+                class="font-medium text-slate-700 hover:text-blue-600"
+              >
+                Dashboard
+              </a>
+              <a
+                routerLink="/tasks"
+                routerLinkActive="text-blue-600"
+                class="font-medium text-slate-700 hover:text-blue-600"
+              >
+                Tasks
+              </a>
+              <a
+                routerLink="/stats"
+                routerLinkActive="text-blue-600"
+                class="font-medium text-slate-700 hover:text-blue-600"
+              >
+                Stats
+              </a>
+            </nav>
+            <app-button appearance="outline-grayscale" size="s" (click)="logout()">Logout</app-button>
+          </div>
+        </header>
+      }
       <router-outlet />
     </main>
   }

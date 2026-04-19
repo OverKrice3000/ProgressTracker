@@ -16,8 +16,8 @@ export class TaskQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['name', 'trackerType', 'depth'])
-  sortBy?: 'name' | 'trackerType' | 'depth';
+  @IsIn(['name', 'trackerType', 'depth', 'recent'])
+  sortBy?: 'name' | 'trackerType' | 'depth' | 'recent';
 
   @IsOptional()
   @IsString()

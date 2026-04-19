@@ -27,9 +27,11 @@ interface PieSegment {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="rounded-2xl bg-white p-4 shadow-sm">
-      <h3 class="mb-3 text-lg font-semibold text-slate-900">Time by task</h3>
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+      <div class="space-y-5">
+      <h3 class="text-lg font-semibold text-slate-900">Time by task</h3>
       <ng-container *ngIf="nodes.length && totalMinutes() > 0; else empty">
+        <div class="flex flex-col gap-5">
         <svg [attr.viewBox]="viewBox" class="mx-auto h-64 w-full max-w-md">
           <g [attr.transform]="'translate(' + cx + ',' + cy + ')'">
             @for (seg of segments(); track seg.taskId) {
@@ -55,16 +57,18 @@ interface PieSegment {
             }
           </g>
         </svg>
-        <ul class="mt-3 space-y-1 text-sm text-slate-600">
-          <li *ngFor="let node of nodes" class="flex justify-between gap-2">
+        <ul class="space-y-2 text-sm text-slate-600">
+          <li *ngFor="let node of nodes" class="flex justify-between gap-3">
             <span class="truncate">{{ node.taskName }}</span>
             <span class="shrink-0 font-medium">{{ node.minutes }}m</span>
           </li>
         </ul>
+        </div>
       </ng-container>
       <ng-template #empty>
         <p class="text-sm text-slate-500">No logged time in this selection.</p>
       </ng-template>
+      </div>
     </div>
   `,
 })
