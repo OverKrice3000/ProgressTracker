@@ -156,25 +156,10 @@ import {
         <ng-container *ngSwitchCase="trackerType.SUBTASK" />
       </ng-container>
 
-      <div class="flex flex-wrap gap-3">
-        <app-button
-          *ngIf="hasRandomChildPool()"
-          appearance="outline-grayscale"
-          size="s"
-          (click)="navigateToRandomChild()"
-        >
-          🎲 Random child
-        </app-button>
-        <app-button
-          *ngIf="hasRandomLeafPool()"
-          appearance="outline-grayscale"
-          size="s"
-          (click)="navigateToRandomLeaf()"
-        >
-          🎲 Random leaf
-        </app-button>
+      <div class="flex flex-wrap items-center gap-3">
         <app-button
           *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
+          size="m"
           (click)="openCreateChildModal()"
           [disabled]="currentTask.isCompleted"
         >
@@ -182,12 +167,14 @@ import {
         </app-button>
         <app-button
           *ngIf="!currentTask.isHidden && showAddProgressButton(currentTask)"
+          size="m"
           (click)="openLogModal()"
         >
           Add progress log
         </app-button>
         <app-button
           *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+          size="m"
           [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
           (click)="toggleTracking(currentTask)"
         >
@@ -196,13 +183,40 @@ import {
         <app-button
           *ngIf="!currentTask.isHidden"
           appearance="outline-grayscale"
+          size="m"
           (click)="confirmDeleteTask(currentTask)"
         >
           Delete
         </app-button>
-        <app-button *ngIf="currentTask.isHidden" appearance="outline-grayscale" (click)="restoreTask(currentTask)">
+        <app-button
+          *ngIf="currentTask.isHidden"
+          appearance="outline-grayscale"
+          size="m"
+          (click)="restoreTask(currentTask)"
+        >
           Restore task
         </app-button>
+        <div
+          *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
+          class="ml-auto flex flex-wrap items-center gap-2"
+        >
+          <app-button
+            *ngIf="hasRandomChildPool()"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="navigateToRandomChild()"
+          >
+            Random child
+          </app-button>
+          <app-button
+            *ngIf="hasRandomLeafPool()"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="navigateToRandomLeaf()"
+          >
+            Random leaf
+          </app-button>
+        </div>
       </div>
 
       <div class="space-y-3" *ngIf="subtaskTree().length > 0">

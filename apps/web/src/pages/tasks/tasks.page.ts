@@ -122,24 +122,29 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <app-button
-          *ngIf="hasRandomChildPool()"
-          appearance="outline-grayscale"
-          size="s"
-          (click)="navigateToRandomChild()"
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <app-button size="m" (click)="openCreateModal()">Create task</app-button>
+        <div
+          *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
+          class="flex flex-wrap items-center gap-2"
         >
-          🎲 Random child
-        </app-button>
-        <app-button
-          *ngIf="hasRandomLeafPool()"
-          appearance="outline-grayscale"
-          size="s"
-          (click)="navigateToRandomLeaf()"
-        >
-          🎲 Random leaf
-        </app-button>
-        <app-button (click)="openCreateModal()">Create task</app-button>
+          <app-button
+            *ngIf="hasRandomChildPool()"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="navigateToRandomChild()"
+          >
+            Random child
+          </app-button>
+          <app-button
+            *ngIf="hasRandomLeafPool()"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="navigateToRandomLeaf()"
+          >
+            Random leaf
+          </app-button>
+        </div>
       </div>
 
       <ng-container *ngIf="viewMode() === 'hierarchy'">
