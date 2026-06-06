@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
+import { forkJoin } from 'rxjs';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { TrackerType } from '@progress-tracker/contracts';
 import { TRACKER_TYPES_IN_DISPLAY_ORDER } from '../../entities/task/lib/tracker-display';
@@ -24,6 +26,11 @@ import {
   ConfirmActionDialogData,
 } from '../../shared/ui/modal/confirm-action-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
+import {
+  collectImmediatePoolFromRoots,
+  collectLeafPoolFromForest,
+  pickRandom,
+} from '../../shared/lib/random-task';
 import { TaskListViewComponent } from '../../widgets/task-list-view/ui/task-list-view.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import {
@@ -115,7 +122,25 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
         </div>
       </div>
 
-      <app-button (click)="openCreateModal()">Create task</app-button>
+      <div class="flex flex-wrap items-center gap-2">
+        <app-button
+          *ngIf="hasRandomChildPool()"
+          appearance="outline-grayscale"
+          size="s"
+          (click)="navigateToRandomChild()"
+        >
+          🎲 Random child
+        </app-button>
+        <app-button
+          *ngIf="hasRandomLeafPool()"
+          appearance="outline-grayscale"
+          size="s"
+          (click)="navigateToRandomLeaf()"
+        >
+          🎲 Random leaf
+        </app-button>
+        <app-button (click)="openCreateModal()">Create task</app-button>
+      </div>
 
       <ng-container *ngIf="viewMode() === 'hierarchy'">
         <p *ngIf="filteredHierarchy().length === 0" class="text-sm text-slate-500">No tasks match your filters.</p>
@@ -160,6 +185,7 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
 export class TasksPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly dialogs = inject(TuiDialogService);
+  private readonly router = inject(Router);
   private readonly trackingStore = inject(TaskTrackingStore);
   private readonly taskTreeRefresh = inject(TaskTreeRefreshService);
   private readonly destroyRef = inject(DestroyRef);
@@ -169,6 +195,8 @@ export class TasksPage implements OnInit {
   /** Which folder task IDs are expanded in the hierarchy tree (applies at every nesting level). */
   readonly expandedFolderIds = signal<Set<string>>(new Set());
   readonly tree = signal<TaskTreeNode[]>([]);
+  /** Full tree (includes archived) for random pick — independent of Show Archived / filters. */
+  readonly fullTree = signal<TaskTreeNode[]>([]);
   readonly recentTasks = signal<TaskBase[]>([]);
   readonly searchQuery = signal('');
   readonly showArchived = signal(false);
@@ -195,6 +223,11 @@ export class TasksPage implements OnInit {
   });
 
   readonly recentBucketRows = computed(() => buildRecentBucketRows(this.filteredRecent()));
+
+  readonly randomChildPool = computed(() => collectImmediatePoolFromRoots(this.fullTree()));
+  readonly randomLeafPool = computed(() => collectLeafPoolFromForest(this.fullTree()));
+  readonly hasRandomChildPool = computed(() => this.randomChildPool().length > 0);
+  readonly hasRandomLeafPool = computed(() => this.randomLeafPool().length > 0);
 
   ngOnInit(): void {
     this.showArchived.set(localStorage.getItem(SHOW_ARCHIVED_STORAGE_KEY) === 'true');
@@ -416,8 +449,28 @@ export class TasksPage implements OnInit {
     });
   }
 
+  navigateToRandomChild(): void {
+    const pick = pickRandom(this.randomChildPool());
+    if (pick) {
+      void this.router.navigate(['/task', pick.id]);
+    }
+  }
+
+  navigateToRandomLeaf(): void {
+    const pick = pickRandom(this.randomLeafPool());
+    if (pick) {
+      void this.router.navigate(['/task', pick.id]);
+    }
+  }
+
   private loadTree(): void {
-    this.tasksApi.getTree(this.showArchived()).subscribe((t) => this.tree.set(t));
+    forkJoin({
+      display: this.tasksApi.getTree(this.showArchived()),
+      full: this.tasksApi.getTree(true),
+    }).subscribe(({ display, full }) => {
+      this.tree.set(display);
+      this.fullTree.set(full);
+    });
   }
 
   private loadRecent(): void {

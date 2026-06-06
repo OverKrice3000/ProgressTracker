@@ -30,6 +30,11 @@ import { TrackProgressDialogComponent } from '../../features/tasks/ui/track-prog
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import { formatHoursMinutesShort } from '../../shared/lib/format-hours-minutes';
 import {
+  collectImmediatePoolFromChildren,
+  collectLeafPoolFromSubtree,
+  pickRandom,
+} from '../../shared/lib/random-task';
+import {
   applyDisplaySort,
   BreadcrumbAncestor,
   buildBreadcrumbSegments,
@@ -153,6 +158,22 @@ import {
 
       <div class="flex flex-wrap gap-3">
         <app-button
+          *ngIf="hasRandomChildPool()"
+          appearance="outline-grayscale"
+          size="s"
+          (click)="navigateToRandomChild()"
+        >
+          🎲 Random child
+        </app-button>
+        <app-button
+          *ngIf="hasRandomLeafPool()"
+          appearance="outline-grayscale"
+          size="s"
+          (click)="navigateToRandomLeaf()"
+        >
+          🎲 Random leaf
+        </app-button>
+        <app-button
           *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
           (click)="openCreateChildModal()"
           [disabled]="currentTask.isCompleted"
@@ -220,6 +241,11 @@ export class TaskDetailPage implements OnInit {
   /** Parent chain from root to parent of current task (excludes current task). */
   readonly breadcrumbAncestors = signal<BreadcrumbAncestor[]>([]);
   readonly breadcrumbSegments = computed(() => buildBreadcrumbSegments(this.breadcrumbAncestors()));
+
+  readonly randomChildPool = computed(() => collectImmediatePoolFromChildren(this.subtaskTree()));
+  readonly randomLeafPool = computed(() => collectLeafPoolFromSubtree(this.subtaskTree()));
+  readonly hasRandomChildPool = computed(() => this.randomChildPool().length > 0);
+  readonly hasRandomLeafPool = computed(() => this.randomLeafPool().length > 0);
 
   ngOnInit(): void {
     this.trackingStore.loadCurrent();
@@ -427,6 +453,20 @@ export class TaskDetailPage implements OnInit {
       this.task.set(restored);
       this.loadSubtaskTree(restored.id);
     });
+  }
+
+  navigateToRandomChild(): void {
+    const pick = pickRandom(this.randomChildPool());
+    if (pick) {
+      void this.router.navigate(['/task', pick.id]);
+    }
+  }
+
+  navigateToRandomLeaf(): void {
+    const pick = pickRandom(this.randomLeafPool());
+    if (pick) {
+      void this.router.navigate(['/task', pick.id]);
+    }
   }
 
   private loadTask(taskId: string): void {
