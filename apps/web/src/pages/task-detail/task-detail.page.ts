@@ -121,19 +121,16 @@ import {
             </span>
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-2" *ngIf="!currentTask.isHidden">
-            <app-button appearance="outline-grayscale" size="s" (click)="openEditModal(currentTask)">
-              Edit task
-            </app-button>
+          <div class="flex shrink-0 items-center gap-2">
             <app-task-actions-menu
-              [canLogProgress]="showAddProgressButton(currentTask)"
-              [showLogProgressOption]="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
-              [showTrackingOption]="currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
-              [isTrackingActive]="activeTrackingTaskId() === currentTask.id"
+              [showEditOption]="!currentTask.isHidden"
+              [showLogProgressOption]="false"
+              [showTrackingOption]="false"
+              [showDeleteOption]="!currentTask.isHidden"
+              [showRestoreOption]="currentTask.isHidden"
               (editTask)="openEditModal(currentTask)"
-              (logProgress)="openLogModal()"
-              (toggleTracking)="toggleTracking(currentTask)"
               (deleteTask)="confirmDeleteTask(currentTask)"
+              (restoreTask)="restoreTask(currentTask)"
             />
           </div>
         </div>
@@ -156,49 +153,36 @@ import {
         <ng-container *ngSwitchCase="trackerType.SUBTASK" />
       </ng-container>
 
-      <div class="flex flex-wrap items-center gap-3">
-        <app-button
-          *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
-          size="m"
-          (click)="openCreateChildModal()"
-          [disabled]="currentTask.isCompleted"
-        >
-          Create child
-        </app-button>
-        <app-button
-          *ngIf="!currentTask.isHidden && showAddProgressButton(currentTask)"
-          size="m"
-          (click)="openLogModal()"
-        >
-          Add progress log
-        </app-button>
-        <app-button
-          *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
-          size="m"
-          [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
-          (click)="toggleTracking(currentTask)"
-        >
-          {{ activeTrackingTaskId() === currentTask.id ? 'Stop tracking' : 'Start tracking' }}
-        </app-button>
-        <app-button
-          *ngIf="!currentTask.isHidden"
-          appearance="outline-grayscale"
-          size="m"
-          (click)="confirmDeleteTask(currentTask)"
-        >
-          Delete
-        </app-button>
-        <app-button
-          *ngIf="currentTask.isHidden"
-          appearance="outline-grayscale"
-          size="m"
-          (click)="restoreTask(currentTask)"
-        >
-          Restore task
-        </app-button>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <app-button
+            *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
+            size="m"
+            (click)="openCreateChildModal()"
+            [disabled]="currentTask.isCompleted"
+          >
+            Create child
+          </app-button>
+          <app-button
+            *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
+            size="m"
+            [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
+            (click)="toggleTracking(currentTask)"
+          >
+            {{ activeTrackingTaskId() === currentTask.id ? 'Stop tracking' : 'Start tracking' }}
+          </app-button>
+          <app-button
+            *ngIf="!currentTask.isHidden && showAddProgressButton(currentTask)"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="openLogModal()"
+          >
+            Add progress log
+          </app-button>
+        </div>
         <div
-          *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
-          class="ml-auto flex flex-wrap items-center gap-2"
+          *ngIf="(hasRandomChildPool() || hasRandomLeafPool()) && !currentTask.isHidden"
+          class="flex flex-wrap items-center gap-2"
         >
           <app-button
             *ngIf="hasRandomChildPool()"
