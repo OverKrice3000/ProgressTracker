@@ -111,11 +111,9 @@ run_api_with_pm2() {
   fi
 
   echo "[deploy] Starting API with PM2 (app: ${app_name})"
-  if pm2 describe "${app_name}" >/dev/null 2>&1; then
-    pm2 restart "${app_name}" --update-env
-  else
-    pm2 start "${api_entry}" --name "${app_name}" --cwd "${api_cwd}" --time
-  fi
+  # Recreate the process so PM2 always runs the freshly built entry from this deploy dir.
+  pm2 delete "${app_name}" >/dev/null 2>&1 || true
+  pm2 start "${api_entry}" --name "${app_name}" --cwd "${api_cwd}" --time
 
   pm2 save
 }
