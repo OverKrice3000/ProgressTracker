@@ -1,17 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { DOCUMENT } from '@angular/common';
 import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-task-actions-menu',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoPipe],
   template: `
     <div class="relative">
       <button
         type="button"
         class="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
-        aria-label="Open task actions"
+        [attr.aria-label]="'taskActions.openMenu' | transloco"
         [attr.aria-expanded]="menuOpen()"
         (click)="toggleMenu($event)"
       >
@@ -32,7 +33,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
           class="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
           (click)="handleEdit($event)"
         >
-          Edit task
+          {{ 'taskActions.edit' | transloco }}
         </button>
         <button
           *ngIf="showLogProgressOption"
@@ -41,7 +42,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
           [disabled]="!canLogProgress"
           (click)="handleLogProgress($event)"
         >
-          Log progress
+          {{ 'taskActions.logProgress' | transloco }}
         </button>
         <button
           *ngIf="showTrackingOption"
@@ -51,7 +52,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
           [class.text-slate-700]="!isTrackingActive"
           (click)="handleToggleTracking($event)"
         >
-          {{ isTrackingActive ? 'Stop tracking' : 'Start tracking' }}
+          {{ isTrackingActive ? ('taskActions.stopTracking' | transloco) : ('taskActions.startTracking' | transloco) }}
         </button>
         <button
           *ngIf="showDeleteOption"
@@ -59,7 +60,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
           class="block w-full rounded-md px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
           (click)="handleDelete($event)"
         >
-          Delete task
+          {{ 'taskActions.delete' | transloco }}
         </button>
         <button
           *ngIf="showRestoreOption"
@@ -67,7 +68,7 @@ import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, 
           class="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
           (click)="handleRestore($event)"
         >
-          Restore task
+          {{ 'taskActions.restore' | transloco }}
         </button>
       </div>
     </div>

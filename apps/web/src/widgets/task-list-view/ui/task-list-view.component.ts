@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { showAddProgressOnListRow } from '../../../entities/task/lib/task-progress-helpers';
 import { TaskBase } from '../../../entities/task/model/task.types';
 import { TaskAvatarComponent } from '../../../entities/task/ui/task-avatar.component';
@@ -22,6 +23,7 @@ import { TaskProgressBarUi, getFlatListProgressBarUi } from '../../../entities/t
     TaskStatusBadgeComponent,
     TaskNameSegmentsPipe,
     TrackerTypeLabelPipe,
+    TranslocoPipe,
   ],
   template: `
     <ul class="grid gap-3">
@@ -46,13 +48,13 @@ import { TaskProgressBarUi, getFlatListProgressBarUi } from '../../../entities/t
               *ngIf="task.isHidden"
               class="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
             >
-              Archived
+              {{ 'taskBadge.archived' | transloco }}
             </span>
             <span
               *ngIf="activeTrackingTaskId === task.id"
               class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
             >
-              Tracking
+              {{ 'taskBadge.tracking' | transloco }}
             </span>
           </div>
           <p class="truncate text-xs text-slate-500">

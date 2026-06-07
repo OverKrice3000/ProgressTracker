@@ -1,0 +1,219 @@
+{
+  "nav": {
+    "dashboard": "Главная",
+    "tasks": "Задачи",
+    "stats": "Статистика",
+    "logs": "Журнал"
+  },
+  "userMenu": {
+    "settings": "Настройки",
+    "logout": "Выйти"
+  },
+  "tracking": {
+    "banner": "Отслеживание:",
+    "stop": "Стоп"
+  },
+  "dashboard": {
+    "title": "Главная",
+    "welcome": "Добро пожаловать, {{name}}"
+  },
+  "login": {
+    "title": "Вход",
+    "subtitle": "Войдите, чтобы продолжить.",
+    "username": "Имя пользователя",
+    "usernameRequired": "Введите имя пользователя",
+    "password": "Пароль",
+    "passwordRequired": "Введите пароль",
+    "signIn": "Войти",
+    "loginFailed": "Ошибка входа"
+  },
+  "tasks": {
+    "title": "Задачи",
+    "viewHierarchy": "Иерархия",
+    "viewRecent": "Недавние",
+    "filterCompletion": "Выполнение",
+    "filterAll": "Все",
+    "filterActive": "Активные",
+    "filterCompleted": "Завершённые",
+    "filterType": "Тип задачи",
+    "filterSearch": "Поиск",
+    "filterSearchPlaceholder": "Фильтр по имени…",
+    "showArchived": "Показать архив",
+    "createTask": "Создать задачу",
+    "randomChild": "Случайная дочерняя",
+    "randomLeaf": "Случайный лист",
+    "emptyFiltered": "Нет задач, соответствующих фильтрам.",
+    "emptyRecent": "Нет задач с журналом прогресса.",
+    "bucketToday": "Сегодня",
+    "bucketWeek": "За последнюю неделю",
+    "bucketMonth": "За последний месяц",
+    "bucketOlder": "Более месяца назад"
+  },
+  "taskDetail": {
+    "allTasks": "Все задачи",
+    "badgeArchived": "Архив",
+    "badgeTracking": "Отслеживается",
+    "typePrefix": "Тип:",
+    "progressPrefix": "Прогресс:",
+    "timePrefix": "Время:",
+    "createChild": "Создать дочернюю",
+    "stopTracking": "Остановить",
+    "startTracking": "Начать отслеживание",
+    "addProgressLog": "Добавить запись",
+    "randomChild": "Случайная дочерняя",
+    "randomLeaf": "Случайный лист",
+    "subtasks": "Подзадачи"
+  },
+  "stats": {
+    "title": "Статистика",
+    "from": "С",
+    "to": "По",
+    "refresh": "Обновить",
+    "showUntracked": "Показать неотслеживаемое время",
+    "totalLogged": "Всего записано (период):",
+    "breakdown": "Разбивка за {{days}} дн.:",
+    "breakdownLogged": "Записано {{time}},",
+    "breakdownIdle": "простой {{time}},",
+    "breakdownUntracked": "неотслеживаемое {{time}}",
+    "loadingChart": "Загрузка графика...",
+    "breakdownTitle": "Разбивка по задачам",
+    "noTasks": "Нет задач за этот период.",
+    "colTask": "Задача",
+    "colTime": "Записанное время (период)",
+    "collapseFolder": "Свернуть папку",
+    "expandFolder": "Развернуть папку",
+    "untracked": "Неотслеживаемое",
+    "distribution": "Распределение",
+    "noData": "Нет данных для этого выбора."
+  },
+  "logs": {
+    "title": "Журнал прогресса",
+    "refresh": "Обновить",
+    "description": "Журнал записей прогресса. Редактируйте или удаляйте для исправления ошибок.",
+    "loading": "Загрузка…",
+    "empty": "Записей пока нет.",
+    "logged": "Записано",
+    "edit": "Изменить",
+    "delete": "Удалить",
+    "couldNotLoad": "Не удалось загрузить журнал.",
+    "couldNotDelete": "Не удалось удалить запись.",
+    "actionsLabel": "Действия для записи {{id}}"
+  },
+  "settings": {
+    "title": "Настройки",
+    "idleHoursLabel": "Часы простоя в день",
+    "idleHoursHelp": "Часы, не относящиеся ни к одной задаче (используется в Статистике).",
+    "languageLabel": "Язык интерфейса",
+    "languageHelp": "Выбор языка.",
+    "langEn": "English",
+    "langRu": "Русский",
+    "saving": "Сохранение…",
+    "saved": "Сохранено",
+    "saveFailed": "Не удалось сохранить. Попробуйте снова."
+  },
+  "taskActions": {
+    "openMenu": "Действия с задачей",
+    "edit": "Изменить задачу",
+    "logProgress": "Записать прогресс",
+    "stopTracking": "Остановить",
+    "startTracking": "Начать отслеживание",
+    "delete": "Удалить задачу",
+    "restore": "Восстановить задачу"
+  },
+  "taskStatus": {
+    "completed": "Завершено",
+    "inProgress": "В процессе"
+  },
+  "taskBadge": {
+    "archived": "Архив",
+    "tracking": "Отслеживается"
+  },
+  "createTask": {
+    "name": "Название",
+    "namePlaceholder": "Введите название…",
+    "nameRequired": "Введите название",
+    "description": "Описание",
+    "taskType": "Тип задачи",
+    "target": "Цель",
+    "targetDuration": "Целевая продолжительность",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "trackerSimple": "Простая",
+    "trackerCounter": "Счётчик",
+    "trackerDuration": "Продолжительность",
+    "trackerFolder": "Папка"
+  },
+  "editTask": {
+    "name": "Название",
+    "description": "Описание",
+    "target": "Цель",
+    "targetDuration": "Целевая продолжительность",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "targetTooLow": "Цель не может быть ниже текущего прогресса.",
+    "targetMinOneMinute": "Целевая продолжительность должна быть не менее 1 минуты.",
+    "couldNotSave": "Не удалось сохранить изменения."
+  },
+  "trackProgress": {
+    "selectDate": "Выберите дату",
+    "timeSpent": "Потраченное время (сессия)",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "newProgressCounter": "Новый прогресс (счётчик)",
+    "newProgressDuration": "Новый прогресс (продолжительность)",
+    "complete": "Завершить",
+    "stopWithoutLogging": "Стоп без записи",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "dateFuture": "Дата не может быть в будущем.",
+    "minOneMinute": "Минимум 1 минута для записи.",
+    "dailyCapExceeded": "Ошибка: суммарное время за день не может превышать 24 часа.",
+    "availableTime": "Доступно для {{date}}: {{hours}}ч {{minutes}}м."
+  },
+  "editLog": {
+    "date": "Дата",
+    "timeSpent": "Потраченное время (сессия)",
+    "hours": "Часы",
+    "minutes": "Минуты",
+    "progressCounter": "Прогресс (счётчик на эту запись)",
+    "progressDuration": "Прогресс (продолжительность на эту запись)",
+    "complete": "Завершить",
+    "cancel": "Отмена",
+    "save": "Сохранить"
+  },
+  "confirmDialog": {
+    "cancel": "Отмена",
+    "confirm": "Подтвердить"
+  },
+  "dialogs": {
+    "createTask": "Создать задачу",
+    "editTask": "Изменить задачу",
+    "trackProgress": "Отслеживать прогресс",
+    "startTracking": "Начать отслеживание",
+    "switchTracking": "Переключить отслеживание",
+    "deleteTask": "Удалить задачу?",
+    "editLog": "Изменить запись",
+    "deleteLog": "Удалить запись",
+    "discardTracking": "Отменить отслеживание?",
+    "confirmDelete": "Удалить",
+    "confirmSwitch": "Переключить",
+    "confirmDiscard": "Стоп и отменить",
+    "keepTracking": "Продолжить",
+    "startTrackingConfirm": "Начать отслеживание этой задачи?",
+    "switchTrackingConfirm": "Вы уже отслеживаете другую задачу. Переключиться?",
+    "deleteTaskConfirm": "Задача и все данные будут удалены без возможности восстановления.",
+    "deleteLogConfirm": "Запись будет удалена без возможности восстановления.",
+    "discardTrackingConfirm": "Остановить без сохранения прогресса?"
+  },
+  "logSummary": {
+    "session": "сессия",
+    "total": "всего",
+    "progress": "прогресс",
+    "markedComplete": "Отмечено завершённым",
+    "notComplete": "Не завершено"
+  }
+}

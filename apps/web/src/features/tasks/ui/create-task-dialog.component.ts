@@ -11,6 +11,7 @@ import { AppButtonComponent } from '../../../shared/ui/button/app-button.compone
 import { TasksApiService } from '../model/tasks-api.service';
 import { buildTrackerMetadata } from '../lib/task-tracker-metadata';
 import { combineHoursMinutes } from '../lib/duration-minutes';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 export interface CreateTaskDialogData {
   parent: TaskBase | null;
@@ -20,17 +21,17 @@ export interface CreateTaskDialogData {
 @Component({
   selector: 'app-create-task-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, TrackerTypeLabelPipe],
+  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, TrackerTypeLabelPipe, TranslocoPipe],
   template: `
     <form [formGroup]="createForm" (ngSubmit)="submit()" class="grid gap-4">
       <div class="grid gap-2">
         <label class="grid gap-2 text-sm" for="create-task-name">
-          Name
+          {{ 'createTask.name' | transloco }}
           <input
             id="create-task-name"
             type="text"
             formControlName="name"
-            placeholder="Enter task name..."
+            [placeholder]="'createTask.namePlaceholder' | transloco"
             autocomplete="off"
             class="w-full rounded border border-slate-300 p-2"
             [attr.aria-invalid]="
@@ -49,32 +50,32 @@ export interface CreateTaskDialogData {
           class="text-xs text-rose-600"
           role="alert"
         >
-          Name is required
+          {{ 'createTask.nameRequired' | transloco }}
         </p>
       </div>
 
       <label class="grid gap-2 text-sm">
-        Description
+        {{ 'createTask.description' | transloco }}
         <textarea formControlName="description" class="min-h-20 rounded border border-slate-300 p-2"></textarea>
       </label>
 
       <label class="grid gap-2 text-sm">
-        Task type
+        {{ 'createTask.taskType' | transloco }}
         <select formControlName="trackerType" class="rounded border border-slate-300 p-2">
           <option *ngFor="let type of trackerTypes" [value]="type">{{ type | trackerTypeLabel }}</option>
         </select>
       </label>
 
       <label *ngIf="isCounterType()" class="grid gap-2 text-sm">
-        Target
+        {{ 'createTask.target' | transloco }}
         <input type="number" formControlName="total" min="1" class="rounded border border-slate-300 p-2" />
       </label>
 
       <div *ngIf="isDurationType()" class="grid gap-2 text-sm">
-        <span class="font-medium text-slate-800">Target Duration</span>
+        <span class="font-medium text-slate-800">{{ 'createTask.targetDuration' | transloco }}</span>
         <div class="grid grid-cols-2 gap-3">
           <label class="grid gap-1">
-            Hours
+            {{ 'createTask.hours' | transloco }}
             <input
               type="number"
               formControlName="durationHours"
@@ -83,7 +84,7 @@ export interface CreateTaskDialogData {
             />
           </label>
           <label class="grid gap-1">
-            Minutes
+            {{ 'createTask.minutes' | transloco }}
             <input
               type="number"
               formControlName="durationMinutes"
@@ -96,8 +97,8 @@ export interface CreateTaskDialogData {
       </div>
 
       <div class="flex justify-end gap-2">
-        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">Cancel</app-button>
-        <app-button type="submit">Save</app-button>
+        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">{{ 'createTask.cancel' | transloco }}</app-button>
+        <app-button type="submit">{{ 'createTask.save' | transloco }}</app-button>
       </div>
     </form>
   `,

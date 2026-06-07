@@ -6,8 +6,10 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
+  inject,
   signal,
 } from '@angular/core';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { formatDurationMinutes } from '../../../shared/lib/format-duration';
 import { colorForStatsSlice } from '../../../shared/lib/stats-slice-color';
 
@@ -33,11 +35,11 @@ interface PieSegment {
 @Component({
   selector: 'app-drilldown-pie',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoPipe],
   template: `
     <div class="rounded-2xl bg-white p-5 shadow-sm">
       <div class="space-y-5">
-        <h3 class="text-lg font-semibold text-slate-900">Distribution</h3>
+        <h3 class="text-lg font-semibold text-slate-900">{{ 'stats.distribution' | transloco }}</h3>
         <ng-container *ngIf="nodes.length && totalMinutes() > 0; else empty">
           <div class="flex flex-col items-center gap-5">
             <svg
@@ -85,7 +87,7 @@ interface PieSegment {
           </div>
         </ng-container>
         <ng-template #empty>
-          <p class="text-sm text-slate-500">No logged time in this selection.</p>
+          <p class="text-sm text-slate-500">{{ 'stats.noData' | transloco }}</p>
         </ng-template>
       </div>
     </div>
@@ -94,6 +96,8 @@ interface PieSegment {
 export class DrilldownPieComponent implements OnChanges {
   @Input({ required: true }) nodes: PieNode[] = [];
   @Output() segmentClick = new EventEmitter<string>();
+
+  private readonly transloco = inject(TranslocoService);
 
   readonly cx = 200;
   readonly cy = 200;
@@ -112,9 +116,9 @@ export class DrilldownPieComponent implements OnChanges {
   chartAriaLabel(): string {
     const t = this.totalMinutes();
     if (t <= 0) {
-      return 'No data';
+      return this.transloco.translate('stats.noData');
     }
-    return `Time distribution, total ${formatDurationMinutes(t)}`;
+    return `${this.transloco.translate('stats.distribution')}: ${formatDurationMinutes(t)}`;
   }
 
   private recompute(): void {

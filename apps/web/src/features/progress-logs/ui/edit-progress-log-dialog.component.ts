@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TrackerType } from '@progress-tracker/contracts';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import type { TuiDialogContext } from '@taiga-ui/core/portals/dialog';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TaskBase } from '../../../entities/task/model/task.types';
 import { ProgressLogsApiService, ProgressLogListItem } from '../model/progress-logs-api.service';
 import { TaskTreeRefreshService } from '../../tasks/model/task-tree-refresh.service';
@@ -20,11 +21,11 @@ export interface EditProgressLogDialogData {
 @Component({
   selector: 'app-edit-progress-log-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, TranslocoPipe],
   template: `
     <form *ngIf="task() as currentTask" [formGroup]="logForm" (ngSubmit)="submit(currentTask)" class="grid gap-4">
       <label class="grid gap-2 text-sm" for="edit-log-date">
-        <span class="font-medium text-slate-800">Date</span>
+        <span class="font-medium text-slate-800">{{ 'editLog.date' | transloco }}</span>
         <input
           id="edit-log-date"
           type="date"
@@ -35,10 +36,10 @@ export interface EditProgressLogDialogData {
       </label>
 
       <div class="grid gap-2 text-sm">
-        <span class="font-medium text-slate-800">Time spent (this session)</span>
+        <span class="font-medium text-slate-800">{{ 'editLog.timeSpent' | transloco }}</span>
         <div class="grid grid-cols-2 gap-3">
           <label class="grid gap-1">
-            Hours
+            {{ 'editLog.hours' | transloco }}
             <input
               type="number"
               formControlName="timeSpentHours"
@@ -47,7 +48,7 @@ export interface EditProgressLogDialogData {
             />
           </label>
           <label class="grid gap-1">
-            Minutes
+            {{ 'editLog.minutes' | transloco }}
             <input
               type="number"
               formControlName="timeSpentMinutes"
@@ -61,7 +62,7 @@ export interface EditProgressLogDialogData {
 
       <ng-container [ngSwitch]="currentTask.trackerType">
         <label *ngSwitchCase="trackerType.NUMBER" class="grid gap-2 text-sm">
-          Progress (counter total after this entry)
+          {{ 'editLog.progressCounter' | transloco }}
           <input
             type="number"
             formControlName="newCurrentNumber"
@@ -71,10 +72,10 @@ export interface EditProgressLogDialogData {
         </label>
 
         <div *ngSwitchCase="trackerType.TIME" class="grid gap-2 text-sm">
-          <span class="font-medium text-slate-800">Progress (duration total after this entry)</span>
+          <span class="font-medium text-slate-800">{{ 'editLog.progressDuration' | transloco }}</span>
           <div class="grid grid-cols-2 gap-3">
             <label class="grid gap-1">
-              Hours
+              {{ 'editLog.hours' | transloco }}
               <input
                 type="number"
                 formControlName="newCurrentHours"
@@ -83,7 +84,7 @@ export interface EditProgressLogDialogData {
               />
             </label>
             <label class="grid gap-1">
-              Minutes
+              {{ 'editLog.minutes' | transloco }}
               <input
                 type="number"
                 formControlName="newCurrentMinutes"
@@ -104,7 +105,7 @@ export interface EditProgressLogDialogData {
             formControlName="markComplete"
             class="h-4 w-4 shrink-0 rounded border border-slate-300 accent-blue-600 focus:ring-blue-500"
           />
-          <span class="text-sm font-medium text-slate-800">Complete</span>
+          <span class="text-sm font-medium text-slate-800">{{ 'editLog.complete' | transloco }}</span>
         </label>
       </ng-container>
 
@@ -119,8 +120,8 @@ export interface EditProgressLogDialogData {
       <p *ngIf="logProgressError()" class="text-sm text-rose-600">{{ logProgressError() }}</p>
 
       <div class="flex justify-end gap-2">
-        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">Cancel</app-button>
-        <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">Save</app-button>
+        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">{{ 'editLog.cancel' | transloco }}</app-button>
+        <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">{{ 'editLog.save' | transloco }}</app-button>
       </div>
     </form>
   `,
@@ -131,6 +132,7 @@ export class EditProgressLogDialogComponent implements OnInit {
   private readonly taskTreeRefresh = inject(TaskTreeRefreshService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
   readonly context = inject(POLYMORPHEUS_CONTEXT) as TuiDialogContext<void, EditProgressLogDialogData>;
 
   readonly trackerType = TrackerType;
@@ -272,16 +274,16 @@ export class EditProgressLogDialogComponent implements OnInit {
     const raw = this.logForm.getRawValue();
     const ymdCheck = raw.logDate;
     if (typeof ymdCheck === 'string' && ymdCheck.length > 0 && ymdCheck > this.maxLogDateYmd()) {
-      this.logProgressError.set('Date cannot be in the future.');
+      this.logProgressError.set(this.transloco.translate('trackProgress.dateFuture'));
       this.logDailyLine.set(null);
       return;
     }
     const timeSpent = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
     let trackerErr: string | null = null;
     if (timeSpent < 1) {
-      trackerErr = 'Minimum 1 minute required to log progress.';
+      trackerErr = this.transloco.translate('trackProgress.minOneMinute');
     } else if (timeSpent > 1440) {
-      trackerErr = 'Time spent cannot exceed 1440 minutes.';
+      trackerErr = this.transloco.translate('trackProgress.minOneMinute');
     } else {
       trackerErr = this.computeTrackerValidationError(task, raw);
     }
@@ -301,7 +303,7 @@ export class EditProgressLogDialogComponent implements OnInit {
     if (timeSpent > remaining) {
       this.logDailyLine.set({
         kind: 'error',
-        text: 'Error: Total time for this day cannot exceed 24 hours.',
+        text: this.transloco.translate('trackProgress.dailyCapExceeded'),
       });
       return;
     }
@@ -310,7 +312,7 @@ export class EditProgressLogDialogComponent implements OnInit {
     const rm = remaining % 60;
     this.logDailyLine.set({
       kind: 'info',
-      text: `Available for ${label}: ${rh}h ${rm}m remaining.`,
+      text: this.transloco.translate('trackProgress.availableTime', { date: label, hours: rh, minutes: rm }),
     });
   }
 

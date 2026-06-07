@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ProgressLogsApiService, ProgressLogListItem } from '../../features/progress-logs/model/progress-logs-api.service';
 import {
   EditProgressLogDialogComponent,
@@ -27,17 +28,16 @@ interface DayGroup {
 @Component({
   selector: 'app-logs-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, AppButtonComponent],
+  imports: [CommonModule, RouterLink, AppButtonComponent, TranslocoPipe],
   template: `
     <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div class="rounded-2xl bg-white p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <h1 class="text-2xl font-semibold text-slate-900">Progress logs</h1>
-          <app-button appearance="outline-grayscale" type="button" (click)="reload()">Refresh</app-button>
+          <h1 class="text-2xl font-semibold text-slate-900">{{ 'logs.title' | transloco }}</h1>
+          <app-button appearance="outline-grayscale" type="button" (click)="reload()">{{ 'logs.refresh' | transloco }}</app-button>
         </div>
         <p class="mt-2 text-sm text-slate-600">
-          Audit trail of progress entries. Edit or delete to correct mistakes; task totals replay from remaining
-          logs.
+          {{ 'logs.description' | transloco }}
         </p>
       </div>
 
@@ -45,10 +45,10 @@ interface DayGroup {
         {{ loadError() }}
       </div>
 
-      <div *ngIf="loading()" class="text-sm text-slate-600">Loading…</div>
+      <div *ngIf="loading()" class="text-sm text-slate-600">{{ 'logs.loading' | transloco }}</div>
 
       <div *ngIf="!loading() && !loadError() && groups().length === 0" class="text-sm text-slate-600">
-        No progress logs yet.
+        {{ 'logs.empty' | transloco }}
       </div>
 
       <div *ngFor="let g of groups()" class="rounded-2xl bg-white p-5 shadow-sm">
@@ -63,14 +63,14 @@ interface DayGroup {
                 {{ log.taskName }}
               </a>
               <p class="mt-1 text-sm text-slate-700">{{ formatLogSummary(log) }}</p>
-              <p class="mt-0.5 text-xs text-slate-500">Logged {{ formatTime(log.createdAt) }}</p>
+              <p class="mt-0.5 text-xs text-slate-500">{{ 'logs.logged' | transloco }} {{ formatTime(log.createdAt) }}</p>
             </div>
             <div class="relative shrink-0">
               <button
                 type="button"
                 class="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
                 [attr.aria-expanded]="menuOpenId() === log.id"
-                [attr.aria-label]="'Actions for log ' + log.id"
+                [attr.aria-label]="'logs.actionsLabel' | transloco: { id: log.id }"
                 (click)="toggleMenu($event, log.id)"
               >
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -88,14 +88,14 @@ interface DayGroup {
                   class="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                   (click)="openEdit(log); closeMenu()"
                 >
-                  Edit
+                  {{ 'logs.edit' | transloco }}
                 </button>
                 <button
                   type="button"
                   class="block w-full rounded-md px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
                   (click)="confirmDelete(log); closeMenu()"
                 >
-                  Delete
+                  {{ 'logs.delete' | transloco }}
                 </button>
               </div>
             </div>
@@ -111,6 +111,7 @@ export class LogsPage implements OnInit {
   private readonly taskTreeRefresh = inject(TaskTreeRefreshService);
   private readonly document = inject(DOCUMENT);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly transloco = inject(TranslocoService);
   readonly loading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly groups = signal<DayGroup[]>([]);
@@ -132,7 +133,7 @@ export class LogsPage implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.loadError.set('Could not load progress logs.');
+        this.loadError.set(this.transloco.translate('logs.couldNotLoad'));
       },
     });
   }
@@ -142,16 +143,16 @@ export class LogsPage implements OnInit {
     if (log.trackerType === TrackerType.TIME) {
       const session = formatHoursMinutesShort(log.timeSpentMinutes);
       const totalMin = Number((applied as Record<string, unknown>)['currentMinutes'] ?? 0);
-      return `${session} this session · total ${formatHoursMinutesShort(totalMin)}`;
+      return `${session} ${this.transloco.translate('logSummary.session')} · ${this.transloco.translate('logSummary.total')} ${formatHoursMinutesShort(totalMin)}`;
     }
     if (log.trackerType === TrackerType.NUMBER) {
       const cur = Number((applied as Record<string, unknown>)['current'] ?? 0);
       const total = Number((applied as Record<string, unknown>)['total'] ?? 0);
-      return `${formatHoursMinutesShort(log.timeSpentMinutes)} this session · progress ${cur} / ${total}`;
+      return `${formatHoursMinutesShort(log.timeSpentMinutes)} ${this.transloco.translate('logSummary.session')} · ${this.transloco.translate('logSummary.progress')} ${cur} / ${total}`;
     }
     if (log.trackerType === TrackerType.BOOLEAN) {
       const done = Boolean((applied as Record<string, unknown>)['current']);
-      return `${formatHoursMinutesShort(log.timeSpentMinutes)} · ${done ? 'Marked complete' : 'Not complete'}`;
+      return `${formatHoursMinutesShort(log.timeSpentMinutes)} · ${done ? this.transloco.translate('logSummary.markedComplete') : this.transloco.translate('logSummary.notComplete')}`;
     }
     return `${formatHoursMinutesShort(log.timeSpentMinutes)}`;
   }
@@ -200,7 +201,7 @@ export class LogsPage implements OnInit {
     const data: EditProgressLogDialogData = { log };
     this.dialogs
       .open<void>(new PolymorpheusComponent(EditProgressLogDialogComponent), {
-        label: 'Edit progress log',
+        label: this.transloco.translate('dialogs.editLog'),
         data,
       })
       .subscribe(() => this.reload());
@@ -209,13 +210,13 @@ export class LogsPage implements OnInit {
   confirmDelete(log: ProgressLogListItem): void {
     const dialogData: ConfirmActionDialogData = {
       message: `Delete this progress entry for “${log.taskName}”? Task progress will be recalculated from remaining logs.`,
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      confirmLabel: this.transloco.translate('dialogs.confirmDelete'),
+      cancelLabel: this.transloco.translate('confirmDialog.cancel'),
       danger: true,
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Delete log',
+        label: this.transloco.translate('dialogs.deleteLog'),
         data: dialogData,
       })
       .subscribe((ok) => {
@@ -228,7 +229,7 @@ export class LogsPage implements OnInit {
             this.reload();
           },
           error: () => {
-            this.loadError.set('Could not delete log.');
+            this.loadError.set(this.transloco.translate('logs.couldNotDelete'));
           },
         });
       });

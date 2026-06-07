@@ -7,6 +7,7 @@ import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import { TuiDialogService, type TuiDialogContext } from '@taiga-ui/core/portals/dialog';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { switchMap } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TaskBase } from '../../../entities/task/model/task.types';
 import { ProgressLogsApiService } from '../../progress-logs/model/progress-logs-api.service';
 import { TaskTreeRefreshService } from '../model/task-tree-refresh.service';
@@ -30,11 +31,11 @@ export interface TrackProgressDialogData {
 @Component({
   selector: 'app-track-progress-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, TranslocoPipe],
   template: `
     <form *ngIf="task() as currentTask" [formGroup]="logForm" (ngSubmit)="submitLog(currentTask)" class="grid gap-4">
       <label class="grid gap-2 text-sm" for="track-progress-log-date">
-        <span class="font-medium text-slate-800">Select Date</span>
+        <span class="font-medium text-slate-800">{{ 'trackProgress.selectDate' | transloco }}</span>
         <input
           id="track-progress-log-date"
           type="date"
@@ -45,10 +46,10 @@ export interface TrackProgressDialogData {
       </label>
 
       <div class="grid gap-2 text-sm">
-        <span class="font-medium text-slate-800">Time spent (this session)</span>
+        <span class="font-medium text-slate-800">{{ 'trackProgress.timeSpent' | transloco }}</span>
         <div class="grid grid-cols-2 gap-3">
           <label class="grid gap-1">
-            Hours
+            {{ 'trackProgress.hours' | transloco }}
             <input
               type="number"
               formControlName="timeSpentHours"
@@ -57,7 +58,7 @@ export interface TrackProgressDialogData {
             />
           </label>
           <label class="grid gap-1">
-            Minutes
+            {{ 'trackProgress.minutes' | transloco }}
             <input
               type="number"
               formControlName="timeSpentMinutes"
@@ -71,7 +72,7 @@ export interface TrackProgressDialogData {
 
       <ng-container [ngSwitch]="currentTask.trackerType">
         <label *ngSwitchCase="trackerType.NUMBER" class="grid gap-2 text-sm">
-          New progress (counter)
+          {{ 'trackProgress.newProgressCounter' | transloco }}
           <input
             type="number"
             formControlName="newCurrentNumber"
@@ -81,10 +82,10 @@ export interface TrackProgressDialogData {
         </label>
 
         <div *ngSwitchCase="trackerType.TIME" class="grid gap-2 text-sm">
-          <span class="font-medium text-slate-800">New progress (duration)</span>
+          <span class="font-medium text-slate-800">{{ 'trackProgress.newProgressDuration' | transloco }}</span>
           <div class="grid grid-cols-2 gap-3">
             <label class="grid gap-1">
-              Hours
+              {{ 'trackProgress.hours' | transloco }}
               <input
                 type="number"
                 formControlName="newCurrentHours"
@@ -93,7 +94,7 @@ export interface TrackProgressDialogData {
               />
             </label>
             <label class="grid gap-1">
-              Minutes
+              {{ 'trackProgress.minutes' | transloco }}
               <input
                 type="number"
                 formControlName="newCurrentMinutes"
@@ -114,7 +115,7 @@ export interface TrackProgressDialogData {
             formControlName="markComplete"
             class="h-4 w-4 shrink-0 rounded border-slate-300 accent-blue-600 focus:ring-blue-500"
           />
-          <span class="text-sm font-medium text-slate-800">Complete</span>
+          <span class="text-sm font-medium text-slate-800">{{ 'trackProgress.complete' | transloco }}</span>
         </label>
       </ng-container>
 
@@ -135,13 +136,13 @@ export interface TrackProgressDialogData {
           type="button"
           (click)="confirmStopWithoutLogging(currentTask)"
         >
-          Stop without logging
+          {{ 'trackProgress.stopWithoutLogging' | transloco }}
         </app-button>
         <span *ngIf="activeTrackingTaskId() !== currentTask.id"></span>
 
         <div class="flex gap-2">
-          <app-button appearance="outline-grayscale" type="button" (click)="cancel()">Cancel</app-button>
-          <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">Save</app-button>
+          <app-button appearance="outline-grayscale" type="button" (click)="cancel()">{{ 'trackProgress.cancel' | transloco }}</app-button>
+          <app-button type="submit" [disabled]="logSubmitDisabled(currentTask)">{{ 'trackProgress.save' | transloco }}</app-button>
         </div>
       </div>
     </form>
@@ -155,6 +156,7 @@ export class TrackProgressDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogs = inject(TuiDialogService);
+  private readonly transloco = inject(TranslocoService);
   readonly context = inject(POLYMORPHEUS_CONTEXT) as TuiDialogContext<void, TrackProgressDialogData>;
 
   readonly trackerType = TrackerType;
@@ -253,13 +255,13 @@ export class TrackProgressDialogComponent implements OnInit {
     }
     const elapsed = this.trackingStore.elapsedMinutes();
     const data: ConfirmActionDialogData = {
-      message: `Are you sure you want to stop tracking? This session's time (${this.formatElapsedAsHoursMinutes(elapsed)}) will be discarded and not saved to your progress.`,
-      confirmLabel: 'Stop and discard',
-      cancelLabel: 'Keep tracking',
+      message: this.transloco.translate('dialogs.discardTrackingConfirm', { time: this.formatElapsedAsHoursMinutes(elapsed) }),
+      confirmLabel: this.transloco.translate('dialogs.confirmDiscard'),
+      cancelLabel: this.transloco.translate('dialogs.keepTracking'),
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Discard tracked time?',
+        label: this.transloco.translate('dialogs.discardTracking'),
         data,
       })
       .subscribe((ok) => {
@@ -281,16 +283,16 @@ export class TrackProgressDialogComponent implements OnInit {
     const raw = this.logForm.getRawValue();
     const ymdCheck = raw.logDate;
     if (typeof ymdCheck === 'string' && ymdCheck.length > 0 && ymdCheck > this.maxLogDateYmd()) {
-      this.logProgressError.set('Date cannot be in the future.');
+      this.logProgressError.set(this.transloco.translate('trackProgress.dateFuture'));
       this.logDailyLine.set(null);
       return;
     }
     const timeSpent = combineHoursMinutes(raw.timeSpentHours, raw.timeSpentMinutes);
     let trackerErr: string | null = null;
     if (timeSpent < 1) {
-      trackerErr = 'Minimum 1 minute required to log progress.';
+      trackerErr = this.transloco.translate('trackProgress.minOneMinute');
     } else if (timeSpent > 1440) {
-      trackerErr = 'Time spent cannot exceed 1440 minutes.';
+      trackerErr = this.transloco.translate('trackProgress.minOneMinute');
     } else {
       trackerErr = this.computeTrackerValidationError(task, raw);
     }
@@ -310,7 +312,7 @@ export class TrackProgressDialogComponent implements OnInit {
     if (timeSpent > remaining) {
       this.logDailyLine.set({
         kind: 'error',
-        text: 'Error: Total time for this day cannot exceed 24 hours.',
+        text: this.transloco.translate('trackProgress.dailyCapExceeded'),
       });
       return;
     }
@@ -319,7 +321,7 @@ export class TrackProgressDialogComponent implements OnInit {
     const rm = remaining % 60;
     this.logDailyLine.set({
       kind: 'info',
-      text: `Available for ${label}: ${rh}h ${rm}m remaining.`,
+      text: this.transloco.translate('trackProgress.availableTime', { date: label, hours: rh, minutes: rm }),
     });
   }
 

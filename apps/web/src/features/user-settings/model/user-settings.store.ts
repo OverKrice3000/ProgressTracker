@@ -24,6 +24,11 @@ export class UserSettingsStore {
     });
   }
 
+  markLoaded(): void {
+    this.loadedSignal.set(true);
+    this.loading = true;
+  }
+
   setIdleHoursPerDay(value: number): void {
     this.idleHoursPerDaySignal.set(value);
   }

@@ -6,6 +6,7 @@ import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { forkJoin } from 'rxjs';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { TrackerType } from '@progress-tracker/contracts';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TRACKER_TYPES_IN_DISPLAY_ORDER } from '../../entities/task/lib/tracker-display';
 import { TrackerTypeLabelPipe } from '../../entities/task/ui/tracker-type-label.pipe';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
@@ -52,12 +53,13 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
     TaskHierarchyViewComponent,
     AppButtonComponent,
     TrackerTypeLabelPipe,
+    TranslocoPipe,
   ],
   template: `
     <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div class="rounded-2xl bg-white p-5 shadow-sm">
         <div class="space-y-5">
-          <h1 class="text-2xl font-semibold text-slate-900">Tasks</h1>
+          <h1 class="text-2xl font-semibold text-slate-900">{{ 'tasks.title' | transloco }}</h1>
 
           <div class="flex flex-wrap gap-2">
           <app-button
@@ -65,48 +67,48 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
             size="s"
             (click)="setViewMode('hierarchy')"
           >
-            Hierarchy
+            {{ 'tasks.viewHierarchy' | transloco }}
           </app-button>
           <app-button
             [appearance]="viewMode() === 'recent' ? 'primary' : 'outline-grayscale'"
             size="s"
             (click)="setViewMode('recent')"
           >
-            Recent
+            {{ 'tasks.viewRecent' | transloco }}
           </app-button>
           </div>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label class="flex flex-col gap-2 text-sm">
-            Completion
+            {{ 'tasks.filterCompletion' | transloco }}
             <select
               [value]="completionFilter()"
               (change)="setCompletionFilter($event)"
               class="rounded border border-slate-300 p-2"
             >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
+              <option value="all">{{ 'tasks.filterAll' | transloco }}</option>
+              <option value="active">{{ 'tasks.filterActive' | transloco }}</option>
+              <option value="completed">{{ 'tasks.filterCompleted' | transloco }}</option>
             </select>
           </label>
             <label class="flex flex-col gap-2 text-sm">
-            Task type
+            {{ 'tasks.filterType' | transloco }}
             <select
               [value]="trackerFilter()"
               (change)="setTrackerFilter($event)"
               class="rounded border border-slate-300 p-2"
             >
-              <option value="">All</option>
+              <option value="">{{ 'tasks.filterAll' | transloco }}</option>
               <option *ngFor="let type of trackerTypes" [value]="type">{{ type | trackerTypeLabel }}</option>
             </select>
           </label>
             <label class="flex flex-col gap-2 text-sm sm:col-span-2">
-            Search
+            {{ 'tasks.filterSearch' | transloco }}
             <input
               type="search"
               [value]="searchQuery()"
               (input)="onSearchInput($event)"
-              placeholder="Filter by name…"
+              [placeholder]="'tasks.filterSearchPlaceholder' | transloco"
               class="w-full rounded border border-slate-300 p-2"
             />
           </label>
@@ -116,14 +118,14 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
                 [checked]="showArchived()"
                 (change)="setShowArchived($event)"
               />
-              Show Archived
+              {{ 'tasks.showArchived' | transloco }}
             </label>
           </div>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <app-button size="m" (click)="openCreateModal()">Create task</app-button>
+        <app-button size="m" (click)="openCreateModal()">{{ 'tasks.createTask' | transloco }}</app-button>
         <div
           *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
           class="flex flex-wrap items-center gap-2"
@@ -134,7 +136,7 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
             size="m"
             (click)="navigateToRandomChild()"
           >
-            Random child
+            {{ 'tasks.randomChild' | transloco }}
           </app-button>
           <app-button
             *ngIf="hasRandomLeafPool()"
@@ -142,13 +144,13 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
             size="m"
             (click)="navigateToRandomLeaf()"
           >
-            Random leaf
+            {{ 'tasks.randomLeaf' | transloco }}
           </app-button>
         </div>
       </div>
 
       <ng-container *ngIf="viewMode() === 'hierarchy'">
-        <p *ngIf="filteredHierarchy().length === 0" class="text-sm text-slate-500">No tasks match your filters.</p>
+        <p *ngIf="filteredHierarchy().length === 0" class="text-sm text-slate-500">{{ 'tasks.emptyFiltered' | transloco }}</p>
         <app-task-hierarchy-view
           *ngIf="filteredHierarchy().length > 0"
           [nodes]="filteredHierarchy()"
@@ -166,11 +168,11 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
 
       <ng-container *ngIf="viewMode() === 'recent'">
         <p *ngIf="filteredRecent().length === 0" class="text-sm text-slate-500">
-          No tasks with progress logs match your filters.
+          {{ 'tasks.emptyRecent' | transloco }}
         </p>
         <div *ngIf="recentBucketRows().length > 0" class="space-y-8">
           <section *ngFor="let row of recentBucketRows()" class="space-y-3">
-            <h2 class="text-sm font-medium text-slate-500">{{ row.label }}</h2>
+            <h2 class="text-sm font-medium text-slate-500">{{ row.label | transloco }}</h2>
             <app-task-list-view
               [tasks]="row.tasks"
               [searchQuery]="searchQuery()"
@@ -194,6 +196,7 @@ export class TasksPage implements OnInit {
   private readonly trackingStore = inject(TaskTrackingStore);
   private readonly taskTreeRefresh = inject(TaskTreeRefreshService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   readonly trackerTypes = TRACKER_TYPES_IN_DISPLAY_ORDER;
   readonly viewMode = signal<'hierarchy' | 'recent'>('hierarchy');
@@ -311,7 +314,7 @@ export class TasksPage implements OnInit {
       },
     };
     this.dialogs.open(new PolymorpheusComponent(CreateTaskDialogComponent), {
-      label: 'Create task',
+      label: this.transloco.translate('dialogs.createTask'),
       data,
     }).subscribe();
   }
@@ -330,7 +333,7 @@ export class TasksPage implements OnInit {
       },
     };
     this.dialogs.open(new PolymorpheusComponent(EditTaskDialogComponent), {
-      label: 'Edit task',
+      label: this.transloco.translate('dialogs.editTask'),
       data,
     }).subscribe();
   }
@@ -340,7 +343,7 @@ export class TasksPage implements OnInit {
       return;
     }
     this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
-      label: 'Track progress',
+      label: this.transloco.translate('dialogs.trackProgress'),
       data: {
         task,
         onSuccess: () => {
@@ -361,7 +364,7 @@ export class TasksPage implements OnInit {
     if (current?.taskId === task.id) {
       this.tasksApi.getTask(task.id).subscribe((fresh) => {
         this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
-          label: 'Track progress',
+          label: this.transloco.translate('dialogs.trackProgress'),
           data: {
             task: fresh,
             prefillElapsedMinutes: this.trackingStore.elapsedMinutes(),
@@ -379,12 +382,12 @@ export class TasksPage implements OnInit {
     }
     if (!current) {
       const data: ConfirmActionDialogData = {
-        message: 'Start tracking this task?',
-        confirmLabel: 'Start',
+        message: this.transloco.translate('dialogs.startTrackingConfirm'),
+        confirmLabel: this.transloco.translate('dialogs.confirmSwitch'),
       };
       this.dialogs
         .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-          label: 'Start tracking',
+          label: this.transloco.translate('dialogs.startTracking'),
           data,
         })
         .subscribe((ok) => {
@@ -395,12 +398,12 @@ export class TasksPage implements OnInit {
       return;
     }
     const data: ConfirmActionDialogData = {
-      message: `You are already tracking ${current.taskName}. Stop it and start this one?`,
-      confirmLabel: 'Switch',
+      message: this.transloco.translate('dialogs.switchTrackingConfirm'),
+      confirmLabel: this.transloco.translate('dialogs.confirmSwitch'),
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Switch tracking',
+        label: this.transloco.translate('dialogs.switchTracking'),
         data,
       })
       .subscribe((ok) => {
@@ -415,15 +418,14 @@ export class TasksPage implements OnInit {
       return;
     }
     const data: ConfirmActionDialogData = {
-      message:
-        'Are you sure you want to delete this task? Tasks with tracked progress will be archived to keep your statistics accurate.',
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      message: this.transloco.translate('dialogs.deleteTaskConfirm'),
+      confirmLabel: this.transloco.translate('dialogs.confirmDelete'),
+      cancelLabel: this.transloco.translate('confirmDialog.cancel'),
       danger: true,
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Delete task?',
+        label: this.transloco.translate('dialogs.deleteTask'),
         data,
       })
       .subscribe((ok) => {

@@ -1,0 +1,219 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "tasks": "Tasks",
+    "stats": "Stats",
+    "logs": "Logs"
+  },
+  "userMenu": {
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "tracking": {
+    "banner": "Tracking:",
+    "stop": "Stop"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {{name}}"
+  },
+  "login": {
+    "title": "Login",
+    "subtitle": "Sign in to continue to the dashboard.",
+    "username": "Username",
+    "usernameRequired": "Username is required",
+    "password": "Password",
+    "passwordRequired": "Password is required",
+    "signIn": "Sign in",
+    "loginFailed": "Login failed"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "viewHierarchy": "Hierarchy",
+    "viewRecent": "Recent",
+    "filterCompletion": "Completion",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterCompleted": "Completed",
+    "filterType": "Task type",
+    "filterSearch": "Search",
+    "filterSearchPlaceholder": "Filter by name…",
+    "showArchived": "Show Archived",
+    "createTask": "Create task",
+    "randomChild": "Random child",
+    "randomLeaf": "Random leaf",
+    "emptyFiltered": "No tasks match your filters.",
+    "emptyRecent": "No tasks with progress logs match your filters.",
+    "bucketToday": "Today",
+    "bucketWeek": "In the last week",
+    "bucketMonth": "In the last month",
+    "bucketOlder": "More than a month ago"
+  },
+  "taskDetail": {
+    "allTasks": "All Tasks",
+    "badgeArchived": "Archived",
+    "badgeTracking": "Tracking",
+    "typePrefix": "Type:",
+    "progressPrefix": "Progress:",
+    "timePrefix": "Time:",
+    "createChild": "Create child",
+    "stopTracking": "Stop tracking",
+    "startTracking": "Start tracking",
+    "addProgressLog": "Add progress log",
+    "randomChild": "Random child",
+    "randomLeaf": "Random leaf",
+    "subtasks": "Subtasks"
+  },
+  "stats": {
+    "title": "Stats",
+    "from": "From",
+    "to": "To",
+    "refresh": "Refresh",
+    "showUntracked": "Show Untracked Time",
+    "totalLogged": "Total time logged (period):",
+    "breakdown": "24h breakdown ({{days}} day(s)):",
+    "breakdownLogged": "Logged {{time}},",
+    "breakdownIdle": "idle allowance {{time}},",
+    "breakdownUntracked": "untracked {{time}}",
+    "loadingChart": "Loading chart...",
+    "breakdownTitle": "Breakdown by task",
+    "noTasks": "No tasks in this period.",
+    "colTask": "Task",
+    "colTime": "Time logged (period)",
+    "collapseFolder": "Collapse folder",
+    "expandFolder": "Expand folder",
+    "untracked": "Untracked",
+    "distribution": "Distribution",
+    "noData": "No logged time in this selection."
+  },
+  "logs": {
+    "title": "Progress logs",
+    "refresh": "Refresh",
+    "description": "Audit trail of progress entries. Edit or delete to correct mistakes; task totals replay from remaining logs.",
+    "loading": "Loading…",
+    "empty": "No progress logs yet.",
+    "logged": "Logged",
+    "edit": "Edit",
+    "delete": "Delete",
+    "couldNotLoad": "Could not load progress logs.",
+    "couldNotDelete": "Could not delete log.",
+    "actionsLabel": "Actions for log {{id}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "idleHoursLabel": "Idle hours per day",
+    "idleHoursHelp": "Hours not attributed to any tracked task (used for untracked time in Stats).",
+    "languageLabel": "Interface language",
+    "languageHelp": "Language preference.",
+    "langEn": "English",
+    "langRu": "Russian",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveFailed": "Failed to save. Please try again."
+  },
+  "taskActions": {
+    "openMenu": "Open task actions",
+    "edit": "Edit task",
+    "logProgress": "Log progress",
+    "stopTracking": "Stop tracking",
+    "startTracking": "Start tracking",
+    "delete": "Delete task",
+    "restore": "Restore task"
+  },
+  "taskStatus": {
+    "completed": "Completed",
+    "inProgress": "In progress"
+  },
+  "taskBadge": {
+    "archived": "Archived",
+    "tracking": "Tracking"
+  },
+  "createTask": {
+    "name": "Name",
+    "namePlaceholder": "Enter task name...",
+    "nameRequired": "Name is required",
+    "description": "Description",
+    "taskType": "Task type",
+    "target": "Target",
+    "targetDuration": "Target Duration",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "cancel": "Cancel",
+    "save": "Save",
+    "trackerSimple": "Simple",
+    "trackerCounter": "Counter",
+    "trackerDuration": "Duration",
+    "trackerFolder": "Folder"
+  },
+  "editTask": {
+    "name": "Name",
+    "description": "Description",
+    "target": "Target",
+    "targetDuration": "Target Duration",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "cancel": "Cancel",
+    "save": "Save",
+    "targetTooLow": "Target cannot be lower than current progress.",
+    "targetMinOneMinute": "Target duration must be at least 1 minute.",
+    "couldNotSave": "Could not save changes."
+  },
+  "trackProgress": {
+    "selectDate": "Select Date",
+    "timeSpent": "Time spent (this session)",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "newProgressCounter": "New progress (counter)",
+    "newProgressDuration": "New progress (duration)",
+    "complete": "Complete",
+    "stopWithoutLogging": "Stop without logging",
+    "cancel": "Cancel",
+    "save": "Save",
+    "dateFuture": "Date cannot be in the future.",
+    "minOneMinute": "Minimum 1 minute required to log progress.",
+    "dailyCapExceeded": "Error: Total time for this day cannot exceed 24 hours.",
+    "availableTime": "Available for {{date}}: {{hours}}h {{minutes}}m remaining."
+  },
+  "editLog": {
+    "date": "Date",
+    "timeSpent": "Time spent (this session)",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "progressCounter": "Progress (counter total after this entry)",
+    "progressDuration": "Progress (duration total after this entry)",
+    "complete": "Complete",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "confirmDialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "dialogs": {
+    "createTask": "Create task",
+    "editTask": "Edit task",
+    "trackProgress": "Track progress",
+    "startTracking": "Start tracking",
+    "switchTracking": "Switch tracking",
+    "deleteTask": "Delete task?",
+    "editLog": "Edit progress log",
+    "deleteLog": "Delete log",
+    "discardTracking": "Discard tracked time?",
+    "confirmDelete": "Delete",
+    "confirmSwitch": "Switch",
+    "confirmDiscard": "Stop and discard",
+    "keepTracking": "Keep tracking",
+    "startTrackingConfirm": "Start tracking this task?",
+    "switchTrackingConfirm": "You are already tracking another task. Switch to this task?",
+    "deleteTaskConfirm": "This will permanently delete the task and all its data.",
+    "deleteLogConfirm": "This will permanently delete the log entry.",
+    "discardTrackingConfirm": "Are you sure you want to stop without saving progress?"
+  },
+  "logSummary": {
+    "session": "this session",
+    "total": "total",
+    "progress": "progress",
+    "markedComplete": "Marked complete",
+    "notComplete": "Not complete"
+  }
+}

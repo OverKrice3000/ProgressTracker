@@ -10,28 +10,28 @@
                 routerLinkActive="text-blue-600"
                 class="font-medium text-slate-700 hover:text-blue-600"
               >
-                Dashboard
+                {{ 'nav.dashboard' | transloco }}
               </a>
               <a
                 routerLink="/tasks"
                 routerLinkActive="text-blue-600"
                 class="font-medium text-slate-700 hover:text-blue-600"
               >
-                Tasks
+                {{ 'nav.tasks' | transloco }}
               </a>
               <a
                 routerLink="/stats"
                 routerLinkActive="text-blue-600"
                 class="font-medium text-slate-700 hover:text-blue-600"
               >
-                Stats
+                {{ 'nav.stats' | transloco }}
               </a>
               <a
                 routerLink="/logs"
                 routerLinkActive="text-blue-600"
                 class="font-medium text-slate-700 hover:text-blue-600"
               >
-                Logs
+                {{ 'nav.logs' | transloco }}
               </a>
             </nav>
             <div class="relative">
@@ -72,7 +72,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.49.49 0 00.12-.62l-1.92-3.32a.49.49 0 00-.6-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.48.48 0 00-.48-.41h-3.84a.48.48 0 00-.48.41l-.36 2.54a7.02 7.02 0 00-1.62.94l-2.39-.96a.47.47 0 00-.6.22L2.74 9.46a.48.48 0 00.12.62l2.03 1.58a7.12 7.12 0 000 1.88l-2.03 1.58a.49.49 0 00-.12.62l1.92 3.32c.12.22.37.3.6.22l2.39-.96c.5.36 1.05.66 1.62.94l.36 2.54c.06.24.27.41.48.41h3.84c.22 0 .42-.17.48-.41l.36-2.54a7.02 7.02 0 001.62-.94l2.39.96c.23.08.48 0 .6-.22l1.92-3.32a.49.49 0 00-.12-.62l-2.03-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/>
                     </svg>
-                    Settings
+                    {{ 'userMenu.settings' | transloco }}
                   </button>
                   <div class="mx-3 my-1 border-t border-slate-100"></div>
                   <button
@@ -83,7 +83,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                     </svg>
-                    Logout
+                    {{ 'userMenu.logout' | transloco }}
                   </button>
                 </div>
               }
@@ -96,7 +96,7 @@
           <div class="fixed bottom-4 right-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-sky-200 bg-sky-50 p-3 shadow-md">
             <div class="flex items-center justify-between gap-3 text-sm">
               <span class="min-w-0 truncate font-medium text-sky-900">
-                Tracking:
+                {{ 'tracking.banner' | transloco }}
                 <a
                   [routerLink]="['/task', active.taskId]"
                   class="underline-offset-2 hover:underline"
@@ -106,7 +106,7 @@
                 - {{ formatElapsedMinutes(trackingStore.elapsedMinutes()) }}
               </span>
               <app-button appearance="outline-grayscale" size="s" (click)="stopTrackingFromHeader()">
-                Stop
+                {{ 'tracking.stop' | transloco }}
               </app-button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TrackerType } from '@progress-tracker/contracts';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import type { TuiDialogContext } from '@taiga-ui/core/portals/dialog';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TaskBase } from '../../../entities/task/model/task.types';
 import { AppButtonComponent } from '../../../shared/ui/button/app-button.component';
 import { TasksApiService } from '../model/tasks-api.service';
@@ -17,11 +18,11 @@ export interface EditTaskDialogData {
 @Component({
   selector: 'app-edit-task-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, AppButtonComponent, TranslocoPipe],
   template: `
     <form [formGroup]="editForm" (ngSubmit)="submit()" class="grid gap-4">
       <label class="grid gap-2 text-sm" for="edit-task-name">
-        Name
+        {{ 'editTask.name' | transloco }}
         <input
           id="edit-task-name"
           type="text"
@@ -32,12 +33,12 @@ export interface EditTaskDialogData {
       </label>
 
       <label class="grid gap-2 text-sm">
-        Description
+        {{ 'editTask.description' | transloco }}
         <textarea formControlName="description" class="min-h-20 rounded border border-slate-300 p-2"></textarea>
       </label>
 
       <label *ngIf="isCounterType()" class="grid gap-2 text-sm" for="edit-task-target">
-        Target
+        {{ 'editTask.target' | transloco }}
         <input
           id="edit-task-target"
           type="number"
@@ -48,10 +49,10 @@ export interface EditTaskDialogData {
       </label>
 
       <div *ngIf="isDurationType()" class="grid gap-2 text-sm">
-        <span class="font-medium text-slate-800">Target Duration</span>
+        <span class="font-medium text-slate-800">{{ 'editTask.targetDuration' | transloco }}</span>
         <div class="grid grid-cols-2 gap-3">
           <label class="grid gap-1">
-            Hours
+            {{ 'editTask.hours' | transloco }}
             <input
               type="number"
               formControlName="durationHours"
@@ -60,7 +61,7 @@ export interface EditTaskDialogData {
             />
           </label>
           <label class="grid gap-1">
-            Minutes
+            {{ 'editTask.minutes' | transloco }}
             <input
               type="number"
               formControlName="durationMinutes"
@@ -75,8 +76,8 @@ export interface EditTaskDialogData {
       <p *ngIf="targetError()" class="text-xs text-rose-600" role="alert">{{ targetError() }}</p>
 
       <div class="flex justify-end gap-2">
-        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">Cancel</app-button>
-        <app-button type="submit">Save</app-button>
+        <app-button appearance="outline-grayscale" type="button" (click)="cancel()">{{ 'editTask.cancel' | transloco }}</app-button>
+        <app-button type="submit">{{ 'editTask.save' | transloco }}</app-button>
       </div>
     </form>
   `,
@@ -84,6 +85,7 @@ export interface EditTaskDialogData {
 export class EditTaskDialogComponent implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
   readonly context = inject(POLYMORPHEUS_CONTEXT) as TuiDialogContext<void, EditTaskDialogData>;
 
   readonly task = this.context.data.task;
@@ -159,7 +161,7 @@ export class EditTaskDialogComponent implements OnInit {
     if (this.task.trackerType === TrackerType.NUMBER) {
       const t = Math.floor(Number(raw.targetTotal));
       if (t < this.numberCurrent) {
-        this.targetError.set('Target cannot be lower than current progress.');
+        this.targetError.set(this.transloco.translate('editTask.targetTooLow'));
         return;
       }
       if (t < 1) {
@@ -181,11 +183,11 @@ export class EditTaskDialogComponent implements OnInit {
     if (this.task.trackerType === TrackerType.TIME) {
       const totalMin = combineHoursMinutes(raw.durationHours, raw.durationMinutes);
       if (totalMin < 1) {
-        this.targetError.set('Target duration must be at least 1 minute.');
+        this.targetError.set(this.transloco.translate('editTask.targetMinOneMinute'));
         return;
       }
       if (totalMin < this.timeCurrentMinutes) {
-        this.targetError.set('Target cannot be lower than current progress.');
+        this.targetError.set(this.transloco.translate('editTask.targetTooLow'));
         return;
       }
       this.tasksApi
@@ -221,6 +223,6 @@ export class EditTaskDialogComponent implements OnInit {
     const body = err as { error?: { message?: string | string[] } };
     const m = body.error?.message;
     const msg = Array.isArray(m) ? m[0] : m;
-    this.targetError.set(typeof msg === 'string' ? msg : 'Could not save changes.');
+    this.targetError.set(typeof msg === 'string' ? msg : this.transloco.translate('editTask.couldNotSave'));
   }
 }

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
 import { forkJoin } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { StatsApiService, StatsResponse } from '../../features/stats/model/stats-api.service';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
 import { UserSettingsStore } from '../../features/user-settings/model/user-settings.store';
@@ -29,29 +30,29 @@ import {
 @Component({
   selector: 'app-stats-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, DrilldownPieComponent, AppButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, DrilldownPieComponent, AppButtonComponent, TranslocoPipe],
   template: `
     <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div class="rounded-2xl bg-white p-5 shadow-sm">
         <div class="space-y-5">
-          <h1 class="text-2xl font-semibold text-slate-900">Stats</h1>
+          <h1 class="text-2xl font-semibold text-slate-900">{{ 'stats.title' | transloco }}</h1>
           <form [formGroup]="form" (ngSubmit)="load()" class="flex flex-wrap items-end gap-4">
             <label class="grid gap-2 text-sm text-slate-700">
-              From
+              {{ 'stats.from' | transloco }}
               <input type="date" formControlName="from" class="rounded border border-slate-300 p-2" />
             </label>
             <label class="grid gap-2 text-sm text-slate-700">
-              To
+              {{ 'stats.to' | transloco }}
               <input type="date" formControlName="to" class="rounded border border-slate-300 p-2" />
             </label>
-            <app-button type="submit">Refresh</app-button>
+            <app-button type="submit">{{ 'stats.refresh' | transloco }}</app-button>
             <label class="flex cursor-pointer items-center gap-2 pb-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 [checked]="showUntracked()"
                 (change)="onShowUntrackedChange($event)"
               />
-              Show Untracked Time
+              {{ 'stats.showUntracked' | transloco }}
             </label>
           </form>
         </div>
@@ -60,14 +61,14 @@ import {
       <div *ngIf="summary() as value" class="rounded-2xl bg-white p-5 shadow-sm">
         <div class="space-y-2 text-sm">
           <p class="text-slate-700">
-            <span class="font-medium">Total time logged (period):</span>
+            <span class="font-medium">{{ 'stats.totalLogged' | transloco }}</span>
             {{ formatDuration(value.totals.loggedMinutes) }}
           </p>
           <p class="text-slate-600">
-            <span class="font-medium">24h breakdown ({{ value.range.days }} day(s)):</span>
-            Logged {{ formatDuration(value.totals.loggedMinutes) }}, idle allowance
-            {{ formatDuration(value.totals.idleMinutes) }}, untracked
-            {{ formatDuration(value.totals.untrackedMinutes) }}
+            <span class="font-medium">{{ 'stats.breakdown' | transloco: { days: value.range.days } }}</span>
+            {{ 'stats.breakdownLogged' | transloco: { time: formatDuration(value.totals.loggedMinutes) } }}
+            {{ 'stats.breakdownIdle' | transloco: { time: formatDuration(value.totals.idleMinutes) } }}
+            {{ 'stats.breakdownUntracked' | transloco: { time: formatDuration(value.totals.untrackedMinutes) } }}
           </p>
         </div>
       </div>
@@ -75,21 +76,21 @@ import {
       @defer {
         <app-drilldown-pie [nodes]="pieNodes()" (segmentClick)="onPieSegmentClick($event)" />
       } @placeholder {
-        <p class="text-sm text-slate-500">Loading chart...</p>
+        <p class="text-sm text-slate-500">{{ 'stats.loadingChart' | transloco }}</p>
       }
 
       <div *ngIf="summary() as s" class="overflow-x-auto rounded-2xl bg-white p-5 shadow-sm">
         <div class="space-y-4">
-          <h2 class="text-lg font-semibold text-slate-900">Breakdown by task</h2>
+          <h2 class="text-lg font-semibold text-slate-900">{{ 'stats.breakdownTitle' | transloco }}</h2>
           <p *ngIf="tableRows().length === 0" class="text-sm text-slate-500">
-            No tasks in this period.
+            {{ 'stats.noTasks' | transloco }}
           </p>
           <table *ngIf="tableRows().length > 0" class="w-full min-w-[28rem] border-collapse text-left text-sm">
             <thead>
               <tr class="border-b border-slate-200 text-slate-600">
                 <th class="w-10 py-2 pr-1"></th>
-                <th class="py-2 pr-4 font-medium">Task</th>
-                <th class="py-2 pr-4 font-medium">Time logged (period)</th>
+                <th class="py-2 pr-4 font-medium">{{ 'stats.colTask' | transloco }}</th>
+                <th class="py-2 pr-4 font-medium">{{ 'stats.colTime' | transloco }}</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +104,7 @@ import {
                     type="button"
                     class="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
                     [attr.aria-expanded]="row.isExpanded"
-                    [attr.aria-label]="row.isExpanded ? 'Collapse folder' : 'Expand folder'"
+                    [attr.aria-label]="row.isExpanded ? ('stats.collapseFolder' | transloco) : ('stats.expandFolder' | transloco)"
                     (click)="toggleFolderExpand(row.taskId); $event.stopPropagation()"
                   >
                     <svg
@@ -154,6 +155,7 @@ export class StatsPage implements OnInit {
   private readonly statsApi = inject(StatsApiService);
   private readonly tasksApi = inject(TasksApiService);
   private readonly settingsStore = inject(UserSettingsStore);
+  private readonly transloco = inject(TranslocoService);
   private readonly today = this.formatLocalDate(new Date());
 
   readonly summary = signal<StatsResponse | null>(null);
@@ -196,7 +198,7 @@ export class StatsPage implements OnInit {
     if (showU && s.totals.untrackedMinutes > 0) {
       out.push({
         taskId: STATS_UNTRACKED_ID,
-        taskName: 'Untracked',
+        taskName: this.transloco.translate('stats.untracked'),
         minutes: s.totals.untrackedMinutes,
         fillColor: STATS_UNTRACKED_SLICE_COLOR,
         isFolderSlice: false,
@@ -220,7 +222,7 @@ export class StatsPage implements OnInit {
     if (showU && s.totals.untrackedMinutes > 0) {
       rows.push({
         taskId: STATS_UNTRACKED_ID,
-        name: 'Untracked',
+        name: this.transloco.translate('stats.untracked'),
         minutes: s.totals.untrackedMinutes,
         depth: 0,
         isExpandable: false,

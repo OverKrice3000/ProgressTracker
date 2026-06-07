@@ -2,30 +2,31 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, skip } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { UserSettingsApiService } from '../../features/user-settings/model/user-settings-api.service';
 import { UserSettingsStore } from '../../features/user-settings/model/user-settings.store';
 
 const SUPPORTED_LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'ru', label: 'Russian' },
+  { code: 'en', labelKey: 'settings.langEn' },
+  { code: 'ru', labelKey: 'settings.langRu' },
 ] as const;
 
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, TranslocoPipe],
   template: `
     <section class="mx-auto flex w-full max-w-xl flex-col gap-6 p-4">
       <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h1 class="mb-6 text-2xl font-semibold text-slate-900">Settings</h1>
+        <h1 class="mb-6 text-2xl font-semibold text-slate-900">{{ 'settings.title' | transloco }}</h1>
 
         <form [formGroup]="form" class="flex flex-col gap-6">
           <div class="flex flex-col gap-1.5">
             <label for="idleHours" class="text-sm font-medium text-slate-700">
-              Idle hours per day
+              {{ 'settings.idleHoursLabel' | transloco }}
             </label>
             <p class="text-xs text-slate-500">
-              Hours not attributed to any tracked task (used for untracked time in Stats).
+              {{ 'settings.idleHoursHelp' | transloco }}
             </p>
             <input
               id="idleHours"
@@ -40,10 +41,10 @@ const SUPPORTED_LANGUAGES = [
 
           <div class="flex flex-col gap-1.5">
             <label for="language" class="text-sm font-medium text-slate-700">
-              Interface language
+              {{ 'settings.languageLabel' | transloco }}
             </label>
             <p class="text-xs text-slate-500">
-              Language preference (UI language switching coming soon).
+              {{ 'settings.languageHelp' | transloco }}
             </p>
             <select
               id="language"
@@ -51,18 +52,18 @@ const SUPPORTED_LANGUAGES = [
               class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               @for (lang of languages; track lang.code) {
-                <option [value]="lang.code">{{ lang.label }}</option>
+                <option [value]="lang.code">{{ lang.labelKey | transloco }}</option>
               }
             </select>
           </div>
 
           <div class="h-4 text-xs">
             @if (saveStatus() === 'saving') {
-              <span class="text-slate-400">Saving…</span>
+              <span class="text-slate-400">{{ 'settings.saving' | transloco }}</span>
             } @else if (saveStatus() === 'saved') {
-              <span class="text-emerald-600">Saved</span>
+              <span class="text-emerald-600">{{ 'settings.saved' | transloco }}</span>
             } @else if (saveStatus() === 'error') {
-              <span class="text-red-500">Failed to save. Please try again.</span>
+              <span class="text-red-500">{{ 'settings.saveFailed' | transloco }}</span>
             }
           </div>
         </form>
@@ -74,6 +75,7 @@ export class SettingsPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(UserSettingsApiService);
   private readonly settingsStore = inject(UserSettingsStore);
+  private readonly transloco = inject(TranslocoService);
 
   readonly languages = SUPPORTED_LANGUAGES;
   readonly saveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -126,6 +128,7 @@ export class SettingsPage implements OnInit {
       next: (s) => {
         this.settingsStore.setIdleHoursPerDay(s.idleHoursPerDay);
         this.settingsStore.setLanguage(s.language);
+        this.transloco.setActiveLang(s.language);
         this.saveStatus.set('saved');
         setTimeout(() => {
           if (this.saveStatus() === 'saved') {

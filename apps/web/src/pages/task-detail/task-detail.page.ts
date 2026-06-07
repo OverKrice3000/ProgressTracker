@@ -6,6 +6,7 @@ import { TrackerType } from '@progress-tracker/contracts';
 import { TuiDialogService } from '@taiga-ui/core/portals/dialog';
 import { PolymorpheusComponent } from '@taiga-ui/polymorpheus';
 import { distinctUntilChanged, filter, map } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { showAddProgressOnListRow } from '../../entities/task/lib/task-progress-helpers';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
@@ -53,6 +54,7 @@ import {
     TaskActionsMenuComponent,
     TaskHierarchyViewComponent,
     TrackerTypeLabelPipe,
+    TranslocoPipe,
   ],
   template: `
     <section class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4" *ngIf="task() as currentTask">
@@ -69,7 +71,7 @@ import {
                   routerLink="/tasks"
                   class="shrink-0 rounded-sm hover:text-slate-700 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
                 >
-                  All Tasks
+                  {{ 'taskDetail.allTasks' | transloco }}
                 </a>
                 <span class="shrink-0 text-slate-400 select-none" aria-hidden="true">/</span>
                 <ng-container *ngFor="let a of bc.prefix">
@@ -111,13 +113,13 @@ import {
               *ngIf="currentTask.isHidden"
               class="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
             >
-              Archived
+              {{ 'taskDetail.badgeArchived' | transloco }}
             </span>
             <span
               *ngIf="!currentTask.isHidden && activeTrackingTaskId() === currentTask.id"
               class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
             >
-              Tracking
+              {{ 'taskDetail.badgeTracking' | transloco }}
             </span>
             </div>
           </div>
@@ -135,7 +137,7 @@ import {
           </div>
         </div>
         <p class="text-sm text-slate-600">{{ currentTask.description }}</p>
-        <p class="text-xs text-slate-500">Type: {{ currentTask.trackerType | trackerTypeLabel }}</p>
+        <p class="text-xs text-slate-500">{{ 'taskDetail.typePrefix' | transloco }} {{ currentTask.trackerType | trackerTypeLabel }}</p>
         <app-task-status-badge
           *ngIf="currentTask.trackerType !== trackerType.SUBTASK"
           [isCompleted]="currentTask.isCompleted"
@@ -144,10 +146,10 @@ import {
 
       <ng-container [ngSwitch]="currentTask.trackerType">
         <p *ngSwitchCase="trackerType.NUMBER" class="text-sm text-slate-700">
-          Progress: {{ currentTask.trackerMetadata['current'] }} / {{ currentTask.trackerMetadata['total'] }}
+          {{ 'taskDetail.progressPrefix' | transloco }} {{ currentTask.trackerMetadata['current'] }} / {{ currentTask.trackerMetadata['total'] }}
         </p>
         <p *ngSwitchCase="trackerType.TIME" class="text-sm text-slate-700">
-          Time: {{ formatDurationMinutesForDisplay(currentTask.trackerMetadata['currentMinutes']) }} / {{ formatDurationMinutesForDisplay(currentTask.trackerMetadata['totalMinutes']) }}
+          {{ 'taskDetail.timePrefix' | transloco }} {{ formatDurationMinutesForDisplay(currentTask.trackerMetadata['currentMinutes']) }} / {{ formatDurationMinutesForDisplay(currentTask.trackerMetadata['totalMinutes']) }}
         </p>
         <ng-container *ngSwitchCase="trackerType.BOOLEAN" />
         <ng-container *ngSwitchCase="trackerType.SUBTASK" />
@@ -161,7 +163,7 @@ import {
             (click)="openCreateChildModal()"
             [disabled]="currentTask.isCompleted"
           >
-            Create child
+            {{ 'taskDetail.createChild' | transloco }}
           </app-button>
           <app-button
             *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
@@ -169,7 +171,7 @@ import {
             [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
             (click)="toggleTracking(currentTask)"
           >
-            {{ activeTrackingTaskId() === currentTask.id ? 'Stop tracking' : 'Start tracking' }}
+            {{ activeTrackingTaskId() === currentTask.id ? ('taskDetail.stopTracking' | transloco) : ('taskDetail.startTracking' | transloco) }}
           </app-button>
           <app-button
             *ngIf="!currentTask.isHidden && showAddProgressButton(currentTask)"
@@ -177,7 +179,7 @@ import {
             size="m"
             (click)="openLogModal()"
           >
-            Add progress log
+            {{ 'taskDetail.addProgressLog' | transloco }}
           </app-button>
         </div>
         <div
@@ -190,7 +192,7 @@ import {
             size="m"
             (click)="navigateToRandomChild()"
           >
-            Random child
+            {{ 'taskDetail.randomChild' | transloco }}
           </app-button>
           <app-button
             *ngIf="hasRandomLeafPool()"
@@ -198,13 +200,13 @@ import {
             size="m"
             (click)="navigateToRandomLeaf()"
           >
-            Random leaf
+            {{ 'taskDetail.randomLeaf' | transloco }}
           </app-button>
         </div>
       </div>
 
       <div class="space-y-3" *ngIf="subtaskTree().length > 0">
-        <h2 class="text-lg font-semibold text-slate-900">Subtasks</h2>
+        <h2 class="text-lg font-semibold text-slate-900">{{ 'taskDetail.subtasks' | transloco }}</h2>
         <app-task-hierarchy-view
           [nodes]="subtaskTree()"
           [searchQuery]="''"
@@ -227,6 +229,7 @@ export class TaskDetailPage implements OnInit {
   private readonly tasksApi = inject(TasksApiService);
   private readonly trackingStore = inject(TaskTrackingStore);
   private readonly dialogs = inject(TuiDialogService);
+  private readonly transloco = inject(TranslocoService);
 
   readonly trackerType = TrackerType;
   readonly task = signal<TaskBase | null>(null);
@@ -306,7 +309,7 @@ export class TaskDetailPage implements OnInit {
       },
     };
     this.dialogs.open(new PolymorpheusComponent(CreateTaskDialogComponent), {
-      label: 'Create task',
+      label: this.transloco.translate('dialogs.createTask'),
       data,
     }).subscribe();
   }
@@ -327,7 +330,7 @@ export class TaskDetailPage implements OnInit {
       },
     };
     this.dialogs.open(new PolymorpheusComponent(EditTaskDialogComponent), {
-      label: 'Edit task',
+      label: this.transloco.translate('dialogs.editTask'),
       data,
     }).subscribe();
   }
@@ -338,7 +341,7 @@ export class TaskDetailPage implements OnInit {
     }
     const parentId = this.route.snapshot.paramMap.get('id');
     this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
-      label: 'Track progress',
+      label: this.transloco.translate('dialogs.trackProgress'),
       data: {
         task,
         onSuccess: () => {
@@ -361,12 +364,12 @@ export class TaskDetailPage implements OnInit {
     }
     if (!current) {
       const data: ConfirmActionDialogData = {
-        message: 'Start tracking this task?',
-        confirmLabel: 'Start',
+        message: this.transloco.translate('dialogs.startTrackingConfirm'),
+        confirmLabel: this.transloco.translate('dialogs.confirmSwitch'),
       };
       this.dialogs
         .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-          label: 'Start tracking',
+          label: this.transloco.translate('dialogs.startTracking'),
           data,
         })
         .subscribe((ok) => {
@@ -377,12 +380,12 @@ export class TaskDetailPage implements OnInit {
       return;
     }
     const data: ConfirmActionDialogData = {
-      message: `You are already tracking ${current.taskName}. Stop it and start this one?`,
-      confirmLabel: 'Switch',
+      message: this.transloco.translate('dialogs.switchTrackingConfirm'),
+      confirmLabel: this.transloco.translate('dialogs.confirmSwitch'),
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Switch tracking',
+        label: this.transloco.translate('dialogs.switchTracking'),
         data,
       })
       .subscribe((ok) => {
@@ -398,7 +401,7 @@ export class TaskDetailPage implements OnInit {
       return;
     }
     this.dialogs.open(new PolymorpheusComponent(TrackProgressDialogComponent), {
-      label: 'Track progress',
+      label: this.transloco.translate('dialogs.trackProgress'),
       data: {
         task: t,
         prefillElapsedMinutes,
@@ -413,15 +416,14 @@ export class TaskDetailPage implements OnInit {
 
   confirmDeleteTask(task: TaskBase): void {
     const data: ConfirmActionDialogData = {
-      message:
-        'Are you sure you want to delete this task? Tasks with tracked progress will be archived to keep your statistics accurate.',
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      message: this.transloco.translate('dialogs.deleteTaskConfirm'),
+      confirmLabel: this.transloco.translate('dialogs.confirmDelete'),
+      cancelLabel: this.transloco.translate('confirmDialog.cancel'),
       danger: true,
     };
     this.dialogs
       .open<boolean>(new PolymorpheusComponent(ConfirmActionDialogComponent), {
-        label: 'Delete task?',
+        label: this.transloco.translate('dialogs.deleteTask'),
         data,
       })
       .subscribe((ok) => {

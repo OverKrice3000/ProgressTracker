@@ -26,6 +26,7 @@
     "user:create": "node ./scripts/create-user.mjs"
   },
   "dependencies": {
+    "@jsverse/transloco": "^8.3.0",
     "@progress-tracker/contracts": "file:packages/contracts"
   },
   "devDependencies": {

@@ -143,10 +143,10 @@ export interface RecentBucket {
 }
 
 export const RECENT_BUCKET_DEFS: { key: RecentBucket['key']; label: string }[] = [
-  { key: 'today', label: 'Today' },
-  { key: 'week', label: 'In the last week' },
-  { key: 'month', label: 'In the last month' },
-  { key: 'older', label: 'More than a month ago' },
+  { key: 'today', label: 'tasks.bucketToday' },
+  { key: 'week', label: 'tasks.bucketWeek' },
+  { key: 'month', label: 'tasks.bucketMonth' },
+  { key: 'older', label: 'tasks.bucketOlder' },
 ];
 
 /**

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TrackerType } from '@progress-tracker/contracts';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { showAddProgressOnListRow } from '../../../entities/task/lib/task-progress-helpers';
 import { TaskTreeNode } from '../../../entities/task/model/task.types';
 import { TaskActionsMenuComponent } from '../../../entities/task/ui/task-actions-menu.component';
@@ -25,6 +26,7 @@ import {
     TaskStatusBadgeComponent,
     TaskNameSegmentsPipe,
     TrackerTypeLabelPipe,
+    TranslocoPipe,
   ],
   template: `
     <ul
@@ -43,7 +45,7 @@ import {
               type="button"
               class="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
               [attr.aria-expanded]="isExpanded(node.id)"
-              [attr.aria-label]="isExpanded(node.id) ? 'Collapse folder' : 'Expand folder'"
+              [attr.aria-label]="isExpanded(node.id) ? ('stats.collapseFolder' | transloco) : ('stats.expandFolder' | transloco)"
               (click)="onChevronClick($event, node.id)"
             >
               <svg
@@ -77,13 +79,13 @@ import {
                 *ngIf="node.isHidden"
                 class="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
               >
-                Archived
+                {{ 'taskBadge.archived' | transloco }}
               </span>
               <span
                 *ngIf="activeTrackingTaskId === node.id"
                 class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700"
               >
-                Tracking
+                {{ 'taskBadge.tracking' | transloco }}
               </span>
             </div>
             <p class="truncate text-xs text-slate-500">

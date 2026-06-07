@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TuiRoot } from '@taiga-ui/core/components/root';
 import { filter, map, startWith } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { UserStore } from '../entities/user/model/user.store';
 import { AuthApiService } from '../features/auth/model/auth-api.service';
 import { TaskTrackingStore } from '../features/tasks/model/task-tracking.store';
@@ -11,7 +12,7 @@ import { AppButtonComponent } from '../shared/ui/button/app-button.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TuiRoot, AppButtonComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TuiRoot, AppButtonComponent, TranslocoPipe],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
