@@ -117,7 +117,7 @@ function compareSiblings(a: TaskTreeNode, b: TaskTreeNode): number {
   if (tc !== 0) {
     return tc;
   }
-  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
 }
 
 export function applyDisplaySort(nodes: TaskTreeNode[]): TaskTreeNode[] {
@@ -132,7 +132,7 @@ export function sortTasksByTypeThenName(tasks: TaskBase[]): TaskBase[] {
     if (tc !== 0) {
       return tc;
     }
-    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
   });
 }
 
