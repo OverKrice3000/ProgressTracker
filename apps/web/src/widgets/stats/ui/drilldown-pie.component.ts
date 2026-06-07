@@ -37,7 +37,7 @@ interface PieSegment {
   template: `
     <div class="rounded-2xl bg-white p-5 shadow-sm">
       <div class="space-y-5">
-        <h3 class="text-lg font-semibold text-slate-900">Time by task</h3>
+        <h3 class="text-lg font-semibold text-slate-900">Distribution</h3>
         <ng-container *ngIf="nodes.length && totalMinutes() > 0; else empty">
           <div class="flex flex-col items-center gap-5">
             <svg

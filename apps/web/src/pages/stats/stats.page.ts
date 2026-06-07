@@ -89,7 +89,7 @@ import {
 
       <div *ngIf="summary() as s" class="overflow-x-auto rounded-2xl bg-white p-5 shadow-sm">
         <div class="space-y-4">
-          <h2 class="text-lg font-semibold text-slate-900">Time by task</h2>
+          <h2 class="text-lg font-semibold text-slate-900">Breakdown by task</h2>
           <p *ngIf="tableRows().length === 0" class="text-sm text-slate-500">
             No tasks in this period.
           </p>
