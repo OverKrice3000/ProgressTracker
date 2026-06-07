@@ -1,5 +1,7 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   ApplicationConfig,
+  PLATFORM_ID,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -36,6 +38,11 @@ export const appConfig: ApplicationConfig = {
       loader: TranslocoHttpLoader,
     }),
     provideAppInitializer(async () => {
+      const platformId = inject(PLATFORM_ID);
+      if (!isPlatformBrowser(platformId)) {
+        return;
+      }
+
       const authApi = inject(AuthApiService);
       const settingsApi = inject(UserSettingsApiService);
       const settingsStore = inject(UserSettingsStore);
@@ -55,7 +62,11 @@ export const appConfig: ApplicationConfig = {
         }
       }
 
-      await firstValueFrom(transloco.load(transloco.getActiveLang()));
+      try {
+        await firstValueFrom(transloco.load(transloco.getActiveLang()));
+      } catch {
+        // translation load failure is non-fatal — defaults remain
+      }
     }),
   ],
 };
