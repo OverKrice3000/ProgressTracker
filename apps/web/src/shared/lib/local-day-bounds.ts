@@ -21,10 +21,14 @@ export function localNoonIsoForYmd(ymd: string): string {
 export function formatYmdAsReadable(ymd: string): string {
   const parts = ymd.split('-').map(Number);
   const dt = new Date(parts[0]!, parts[1]! - 1, parts[2]!);
-  return dt.toLocaleDateString(undefined, {
+  const formatted = dt.toLocaleDateString(undefined, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+  if (!formatted) {
+    return formatted;
+  }
+  return formatted.charAt(0).toLocaleUpperCase() + formatted.slice(1);
 }

@@ -170,7 +170,7 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
         </p>
         <div *ngIf="recentBucketRows().length > 0" class="space-y-8">
           <section *ngFor="let row of recentBucketRows()" class="space-y-3">
-            <h2 class="text-sm font-medium uppercase tracking-wide text-slate-500">{{ row.label }}</h2>
+            <h2 class="text-sm font-medium text-slate-500">{{ row.label }}</h2>
             <app-task-list-view
               [tasks]="row.tasks"
               [searchQuery]="searchQuery()"
