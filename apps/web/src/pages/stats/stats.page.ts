@@ -6,6 +6,7 @@ import { TrackerType } from '@progress-tracker/contracts';
 import { forkJoin } from 'rxjs';
 import { StatsApiService, StatsResponse } from '../../features/stats/model/stats-api.service';
 import { TasksApiService } from '../../features/tasks/model/tasks-api.service';
+import { UserSettingsStore } from '../../features/user-settings/model/user-settings.store';
 import { TaskTreeNode } from '../../entities/task/model/task.types';
 import { formatDurationMinutes } from '../../shared/lib/format-duration';
 import { STATS_UNTRACKED_SLICE_COLOR } from '../../shared/lib/stats-slice-color';
@@ -42,16 +43,6 @@ import {
             <label class="grid gap-2 text-sm text-slate-700">
               To
               <input type="date" formControlName="to" class="rounded border border-slate-300 p-2" />
-            </label>
-            <label class="grid gap-2 text-sm text-slate-700">
-              Idle hours per day
-              <input
-                type="number"
-                min="0"
-                max="24"
-                formControlName="idleHours"
-                class="w-24 rounded border border-slate-300 p-2"
-              />
             </label>
             <app-button type="submit">Refresh</app-button>
             <label class="flex cursor-pointer items-center gap-2 pb-2 text-sm text-slate-700">
@@ -162,6 +153,7 @@ export class StatsPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly statsApi = inject(StatsApiService);
   private readonly tasksApi = inject(TasksApiService);
+  private readonly settingsStore = inject(UserSettingsStore);
   private readonly today = this.formatLocalDate(new Date());
 
   readonly summary = signal<StatsResponse | null>(null);
@@ -243,10 +235,10 @@ export class StatsPage implements OnInit {
   readonly form = this.fb.nonNullable.group({
     from: [this.today, Validators.required],
     to: [this.today, Validators.required],
-    idleHours: [0, [Validators.required, Validators.min(0), Validators.max(24)]],
   });
 
   ngOnInit(): void {
+    this.settingsStore.load();
     this.load();
   }
 
@@ -254,7 +246,8 @@ export class StatsPage implements OnInit {
     if (this.form.invalid) {
       return;
     }
-    const { from, to, idleHours } = this.form.getRawValue();
+    const { from, to } = this.form.getRawValue();
+    const idleHours = this.settingsStore.idleHoursPerDay();
     forkJoin({
       summary: this.statsApi.getSummary(from, to, idleHours),
       tree: this.tasksApi.getTree(true),

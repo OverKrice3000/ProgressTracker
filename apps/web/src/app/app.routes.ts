@@ -37,5 +37,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('../pages/logs/logs.page').then((module) => module.LogsPage),
   },
+  {
+    path: 'settings',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('../pages/settings/settings.page').then((module) => module.SettingsPage),
+  },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 ];

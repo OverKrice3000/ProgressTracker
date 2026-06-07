@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TuiRoot } from '@taiga-ui/core/components/root';
@@ -31,15 +31,30 @@ export class App {
   );
 
   readonly showHeader = computed(() => !this.currentUrl().startsWith('/login'));
+  readonly userMenuOpen = signal(false);
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((v) => !v);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
+  }
 
   constructor() {
     this.trackingStore.loadCurrent();
   }
 
   logout(): void {
+    this.closeUserMenu();
     this.authApi.logout().subscribe(() => {
       void this.router.navigateByUrl('/login');
     });
+  }
+
+  navigateToSettings(): void {
+    this.closeUserMenu();
+    void this.router.navigateByUrl('/settings');
   }
 
   formatElapsedMinutes(totalMinutes: number): string {

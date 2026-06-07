@@ -34,7 +34,60 @@
                 Logs
               </a>
             </nav>
-            <app-button appearance="outline-grayscale" size="s" (click)="logout()">Logout</app-button>
+            <div class="relative">
+              <button
+                type="button"
+                (click)="toggleUserMenu()"
+                class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4 text-slate-500"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                </svg>
+                <span>{{ userStore.user()?.username }}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-3.5 w-3.5 text-slate-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </button>
+
+              @if (userMenuOpen()) {
+                <div
+                  class="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+                  (mouseleave)="closeUserMenu()"
+                >
+                  <button
+                    type="button"
+                    (click)="navigateToSettings()"
+                    class="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.49.49 0 00.12-.62l-1.92-3.32a.49.49 0 00-.6-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.48.48 0 00-.48-.41h-3.84a.48.48 0 00-.48.41l-.36 2.54a7.02 7.02 0 00-1.62.94l-2.39-.96a.47.47 0 00-.6.22L2.74 9.46a.48.48 0 00.12.62l2.03 1.58a7.12 7.12 0 000 1.88l-2.03 1.58a.49.49 0 00-.12.62l1.92 3.32c.12.22.37.3.6.22l2.39-.96c.5.36 1.05.66 1.62.94l.36 2.54c.06.24.27.41.48.41h3.84c.22 0 .42-.17.48-.41l.36-2.54a7.02 7.02 0 001.62-.94l2.39.96c.23.08.48 0 .6-.22l1.92-3.32a.49.49 0 00-.12-.62l-2.03-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/>
+                    </svg>
+                    Settings
+                  </button>
+                  <div class="mx-3 my-1 border-t border-slate-100"></div>
+                  <button
+                    type="button"
+                    (click)="logout()"
+                    class="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              }
+            </div>
           </div>
         </header>
       }

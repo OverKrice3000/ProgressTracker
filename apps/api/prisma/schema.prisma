@@ -23,8 +23,18 @@ model User {
   tasks        Task[]
   progressLogs ProgressLog[]
   currentSession CurrentSession?
+  settings     UserSettings?
 
   @@map("users")
+}
+
+model UserSettings {
+  userId          String  @id @map("user_id")
+  idleHoursPerDay Float   @default(0) @map("idle_hours_per_day")
+  language        String  @default("en")
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
 
 model Task {
