@@ -76,6 +76,19 @@ export class TasksApiService {
     return this.http.post<TaskBase>('api/tasks', payload, { withCredentials: true });
   }
 
+  createSequence(payload: {
+    parentId?: string;
+    name: string;
+    description?: string;
+    trackerType: TrackerType;
+    total?: string;
+    durationHours?: string;
+    durationMinutes?: string;
+    count: number;
+  }): Observable<TaskBase[]> {
+    return this.http.post<TaskBase[]>('api/tasks/sequence', payload, { withCredentials: true });
+  }
+
   update(
     taskId: string,
     payload: { name: string; description: string; trackerMetadata?: Record<string, unknown> },

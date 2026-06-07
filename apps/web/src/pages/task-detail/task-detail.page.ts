@@ -15,6 +15,10 @@ import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
 } from '../../features/tasks/ui/create-task-dialog.component';
+import {
+  CreateTaskSequenceDialogComponent,
+  CreateTaskSequenceDialogData,
+} from '../../features/tasks/ui/create-task-sequence-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { TaskStatusBadgeComponent } from '../../entities/task/ui/task-status-badge.component';
 import { TaskActionsMenuComponent } from '../../entities/task/ui/task-actions-menu.component';
@@ -166,6 +170,15 @@ import {
             {{ 'taskDetail.createChild' | transloco }}
           </app-button>
           <app-button
+            *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
+            appearance="outline-grayscale"
+            size="m"
+            (click)="openCreateChildSequenceModal()"
+            [disabled]="currentTask.isCompleted"
+          >
+            {{ 'taskDetail.createChildSequence' | transloco }}
+          </app-button>
+          <app-button
             *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
             size="m"
             [appearance]="activeTrackingTaskId() === currentTask.id ? 'outline-grayscale' : 'primary'"
@@ -294,6 +307,24 @@ export class TaskDetailPage implements OnInit {
   formatDurationMinutesForDisplay(minutes: unknown): string {
     const n = Number(minutes);
     return formatHoursMinutesShort(Number.isFinite(n) ? n : 0);
+  }
+
+  openCreateChildSequenceModal(): void {
+    const t = this.task();
+    if (!t || t.isHidden || t.trackerType !== TrackerType.SUBTASK || t.isCompleted) {
+      return;
+    }
+    const data: CreateTaskSequenceDialogData = {
+      parent: t,
+      onSuccess: () => {
+        this.loadTask(t.id);
+        this.loadSubtaskTree(t.id);
+      },
+    };
+    this.dialogs.open(new PolymorpheusComponent(CreateTaskSequenceDialogComponent), {
+      label: this.transloco.translate('dialogs.createSequence'),
+      data,
+    }).subscribe();
   }
 
   openCreateChildModal(): void {

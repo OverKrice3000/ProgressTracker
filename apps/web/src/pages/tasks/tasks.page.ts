@@ -18,6 +18,10 @@ import {
   CreateTaskDialogData,
 } from '../../features/tasks/ui/create-task-dialog.component';
 import {
+  CreateTaskSequenceDialogComponent,
+  CreateTaskSequenceDialogData,
+} from '../../features/tasks/ui/create-task-sequence-dialog.component';
+import {
   EditTaskDialogComponent,
   EditTaskDialogData,
 } from '../../features/tasks/ui/edit-task-dialog.component';
@@ -126,6 +130,7 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
 
       <div class="flex flex-wrap items-center justify-between gap-3">
         <app-button size="m" (click)="openCreateModal()">{{ 'tasks.createTask' | transloco }}</app-button>
+        <app-button appearance="outline-grayscale" size="m" (click)="openCreateSequenceModal()">{{ 'tasks.createSequence' | transloco }}</app-button>
         <div
           *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
           class="flex flex-wrap items-center gap-2"
@@ -315,6 +320,22 @@ export class TasksPage implements OnInit {
     };
     this.dialogs.open(new PolymorpheusComponent(CreateTaskDialogComponent), {
       label: this.transloco.translate('dialogs.createTask'),
+      data,
+    }).subscribe();
+  }
+
+  openCreateSequenceModal(): void {
+    const data: CreateTaskSequenceDialogData = {
+      parent: null,
+      onSuccess: () => {
+        this.loadTree();
+        if (this.viewMode() === 'recent') {
+          this.loadRecent();
+        }
+      },
+    };
+    this.dialogs.open(new PolymorpheusComponent(CreateTaskSequenceDialogComponent), {
+      label: this.transloco.translate('dialogs.createSequence'),
       data,
     }).subscribe();
   }

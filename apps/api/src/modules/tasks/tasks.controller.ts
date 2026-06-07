@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } f
 import { CurrentUserId } from '../common/current-user.decorator';
 import { SessionAuthGuard } from '../common/session-auth.guard';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskSequenceDto } from './dto/create-task-sequence.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { StartTrackingDto } from './dto/start-tracking.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -15,6 +16,11 @@ export class TasksController {
   @Post()
   create(@CurrentUserId() userId: string, @Body() dto: CreateTaskDto) {
     return this.tasksService.create(userId, dto);
+  }
+
+  @Post('sequence')
+  createSequence(@CurrentUserId() userId: string, @Body() dto: CreateTaskSequenceDto) {
+    return this.tasksService.createSequence(userId, dto);
   }
 
   @Patch(':id')

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { Prisma, Task, TrackerType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskSequenceDto } from './dto/create-task-sequence.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -48,6 +49,65 @@ export class TasksService {
         trackerMetadata: dto.trackerMetadata as Prisma.InputJsonValue,
       },
     });
+  }
+
+  async createSequence(userId: string, dto: CreateTaskSequenceDto): Promise<Task[]> {
+    const parent = dto.parentId
+      ? await this.prisma.task.findFirst({ where: { id: dto.parentId, userId } })
+      : null;
+
+    if (dto.parentId && !parent) throw new NotFoundException('Parent task not found');
+    if (parent && parent.trackerType !== TrackerType.SUBTASK)
+      throw new BadRequestException('Only SUBTASK tracker can be parent');
+
+    const depth = parent ? parent.depth + 1 : 0;
+
+    const tasks = await this.prisma.$transaction(
+      Array.from({ length: dto.count }, (_, i) => {
+        const n = i + 1;
+        const name = dto.name.replace(/\{n\}/g, String(n));
+        const description = dto.description?.replace(/\{n\}/g, String(n));
+        const trackerMetadata = this.buildSequenceTrackerMetadata(dto, n);
+
+        return this.prisma.task.create({
+          data: {
+            userId,
+            parentId: parent?.id ?? null,
+            depth,
+            name,
+            description,
+            isCompleted: false,
+            trackerType: dto.trackerType,
+            trackerMetadata: trackerMetadata as Prisma.InputJsonValue,
+          },
+        });
+      }),
+    );
+
+    return tasks;
+  }
+
+  private resolveToken(template: string | undefined, fallback: number, n: number): number {
+    if (template === undefined || template === null) return fallback;
+    if (template === '{n}') return n;
+    return parseInt(template, 10);
+  }
+
+  private buildSequenceTrackerMetadata(dto: CreateTaskSequenceDto, n: number): Record<string, unknown> {
+    if (dto.trackerType === TrackerType.BOOLEAN) {
+      return { current: false, total: true };
+    }
+    if (dto.trackerType === TrackerType.TIME) {
+      const hours = this.resolveToken(dto.durationHours, 0, n);
+      const minutes = this.resolveToken(dto.durationMinutes, 1, n);
+      return { currentMinutes: 0, totalMinutes: hours * 60 + minutes };
+    }
+    if (dto.trackerType === TrackerType.SUBTASK) {
+      return { childIds: [] };
+    }
+    // NUMBER
+    const total = this.resolveToken(dto.total, 1, n);
+    return { current: 0, total };
   }
 
   async findMany(userId: string, query: TaskQueryDto): Promise<Task[]> {
