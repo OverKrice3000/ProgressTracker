@@ -16,7 +16,6 @@ import { firstValueFrom } from 'rxjs';
 import { provideTaiga } from '@taiga-ui/core';
 import { AuthApiService } from '../features/auth/model/auth-api.service';
 import { provideTransloco, TranslocoService } from '@jsverse/transloco';
-import { UserSettingsApiService } from '../features/user-settings/model/user-settings-api.service';
 import { UserSettingsStore } from '../features/user-settings/model/user-settings.store';
 import { TranslocoHttpLoader } from './transloco-loader';
 
@@ -44,7 +43,6 @@ export const appConfig: ApplicationConfig = {
       }
 
       const authApi = inject(AuthApiService);
-      const settingsApi = inject(UserSettingsApiService);
       const settingsStore = inject(UserSettingsStore);
       const transloco = inject(TranslocoService);
 
@@ -52,20 +50,16 @@ export const appConfig: ApplicationConfig = {
 
       if (user) {
         try {
-          const settings = await firstValueFrom(settingsApi.getSettings());
-          settingsStore.setIdleHoursPerDay(settings.idleHoursPerDay);
-          settingsStore.setLanguage(settings.language);
-          settingsStore.markLoaded();
-          transloco.setActiveLang(settings.language);
+          await firstValueFrom(settingsStore.hydrateFromServer());
         } catch {
           // settings load failure is non-fatal — defaults remain
         }
-      }
-
-      try {
-        await firstValueFrom(transloco.load(transloco.getActiveLang()));
-      } catch {
-        // translation load failure is non-fatal — defaults remain
+      } else {
+        try {
+          await firstValueFrom(transloco.load(transloco.getActiveLang()));
+        } catch {
+          // translation load failure is non-fatal — defaults remain
+        }
       }
     }),
   ],

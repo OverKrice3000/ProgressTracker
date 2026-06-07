@@ -3,7 +3,9 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { catchError, of, switchMap } from 'rxjs';
 import { AuthApiService } from '../../features/auth/model/auth-api.service';
+import { UserSettingsStore } from '../../features/user-settings/model/user-settings.store';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
 import { AppInputComponent } from '../../shared/ui/input/app-input.component';
 
@@ -42,6 +44,7 @@ import { AppInputComponent } from '../../shared/ui/input/app-input.component';
 export class LoginPage {
   private readonly fb = inject(FormBuilder);
   private readonly authApi = inject(AuthApiService);
+  private readonly settingsStore = inject(UserSettingsStore);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
 
@@ -60,7 +63,14 @@ export class LoginPage {
     this.loading.set(true);
     this.error.set('');
     const { username, password } = this.form.getRawValue();
-    this.authApi.login(username, password).subscribe({
+    this.authApi
+      .login(username, password)
+      .pipe(
+        switchMap(() =>
+          this.settingsStore.hydrateFromServer().pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe({
       next: () => {
         this.loading.set(false);
         void this.router.navigateByUrl('/dashboard');
