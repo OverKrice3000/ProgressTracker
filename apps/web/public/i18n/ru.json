@@ -42,7 +42,6 @@
     "createTask": "Создать задачу",
     "createSequence": "Создать серию",
     "randomChild": "Случайная дочерняя",
-    "randomLeaf": "Случайный лист",
     "emptyFiltered": "Нет задач, соответствующих фильтрам.",
     "emptyRecent": "Нет задач с журналом прогресса.",
     "bucketToday": "Сегодня",
@@ -63,7 +62,6 @@
     "startTracking": "Начать отслеживание",
     "addProgressLog": "Добавить запись",
     "randomChild": "Случайная дочерняя",
-    "randomLeaf": "Случайный лист",
     "subtasks": "Подзадачи"
   },
   "stats": {

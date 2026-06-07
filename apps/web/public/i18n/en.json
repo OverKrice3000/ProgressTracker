@@ -42,7 +42,6 @@
     "createTask": "Create task",
     "createSequence": "Create sequence",
     "randomChild": "Random child",
-    "randomLeaf": "Random leaf",
     "emptyFiltered": "No tasks match your filters.",
     "emptyRecent": "No tasks with progress logs match your filters.",
     "bucketToday": "Today",
@@ -63,7 +62,6 @@
     "startTracking": "Start tracking",
     "addProgressLog": "Add progress log",
     "randomChild": "Random child",
-    "randomLeaf": "Random leaf",
     "subtasks": "Subtasks"
   },
   "stats": {

@@ -34,11 +34,7 @@ import {
 import { TrackProgressDialogComponent } from '../../features/tasks/ui/track-progress-dialog.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import { formatHoursMinutesShort } from '../../shared/lib/format-hours-minutes';
-import {
-  collectImmediatePoolFromChildren,
-  collectLeafPoolFromSubtree,
-  pickRandom,
-} from '../../shared/lib/random-task';
+import { collectImmediatePoolFromChildren, pickRandom } from '../../shared/lib/random-task';
 import {
   applyDisplaySort,
   BreadcrumbAncestor,
@@ -198,27 +194,14 @@ import {
             {{ 'taskDetail.addProgressLog' | transloco }}
           </app-button>
         </div>
-        <div
-          *ngIf="(hasRandomChildPool() || hasRandomLeafPool()) && !currentTask.isHidden"
-          class="flex flex-wrap items-center gap-2"
+        <app-button
+          *ngIf="hasRandomChildPool() && !currentTask.isHidden"
+          appearance="outline-grayscale"
+          size="m"
+          (click)="navigateToRandomChild()"
         >
-          <app-button
-            *ngIf="hasRandomChildPool()"
-            appearance="outline-grayscale"
-            size="m"
-            (click)="navigateToRandomChild()"
-          >
-            {{ 'taskDetail.randomChild' | transloco }}
-          </app-button>
-          <app-button
-            *ngIf="hasRandomLeafPool()"
-            appearance="outline-grayscale"
-            size="m"
-            (click)="navigateToRandomLeaf()"
-          >
-            {{ 'taskDetail.randomLeaf' | transloco }}
-          </app-button>
-        </div>
+          {{ 'taskDetail.randomChild' | transloco }}
+        </app-button>
       </div>
 
       <div class="space-y-3" *ngIf="subtaskTree().length > 0">
@@ -260,9 +243,7 @@ export class TaskDetailPage implements OnInit {
   readonly breadcrumbSegments = computed(() => buildBreadcrumbSegments(this.breadcrumbAncestors()));
 
   readonly randomChildPool = computed(() => collectImmediatePoolFromChildren(this.subtaskTree()));
-  readonly randomLeafPool = computed(() => collectLeafPoolFromSubtree(this.subtaskTree()));
   readonly hasRandomChildPool = computed(() => this.randomChildPool().length > 0);
-  readonly hasRandomLeafPool = computed(() => this.randomLeafPool().length > 0);
 
   ngOnInit(): void {
     this.trackingStore.loadCurrent();
@@ -492,13 +473,6 @@ export class TaskDetailPage implements OnInit {
 
   navigateToRandomChild(): void {
     const pick = pickRandom(this.randomChildPool());
-    if (pick) {
-      void this.router.navigate(['/task', pick.id]);
-    }
-  }
-
-  navigateToRandomLeaf(): void {
-    const pick = pickRandom(this.randomLeafPool());
     if (pick) {
       void this.router.navigate(['/task', pick.id]);
     }

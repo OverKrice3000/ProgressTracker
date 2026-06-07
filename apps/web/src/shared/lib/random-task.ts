@@ -1,4 +1,3 @@
-import { TrackerType } from '@progress-tracker/contracts';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 
 export function isEligibleForRandom(task: TaskBase): boolean {
@@ -21,37 +20,4 @@ export function collectImmediatePoolFromRoots(roots: readonly TaskTreeNode[]): T
 /** Active direct children (task detail — immediate mode). */
 export function collectImmediatePoolFromChildren(children: readonly TaskTreeNode[]): TaskBase[] {
   return children.filter(isEligibleForRandom);
-}
-
-/** Active non-folder leaves in an entire forest (Tasks page — leaf mode). */
-export function collectLeafPoolFromForest(roots: readonly TaskTreeNode[]): TaskBase[] {
-  const out: TaskBase[] = [];
-  walkForLeaves(roots, out);
-  return out;
-}
-
-/** Active non-folder leaves under a subtree (task detail — leaf mode). */
-export function collectLeafPoolFromSubtree(nodes: readonly TaskTreeNode[]): TaskBase[] {
-  const out: TaskBase[] = [];
-  walkForLeaves(nodes, out);
-  return out;
-}
-
-function walkForLeaves(nodes: readonly TaskTreeNode[], out: TaskBase[]): void {
-  for (const node of nodes) {
-    if (isLeafEligible(node)) {
-      out.push(node);
-    }
-    if (node.children.length > 0) {
-      walkForLeaves(node.children, out);
-    }
-  }
-}
-
-function isLeafEligible(node: TaskTreeNode): boolean {
-  return (
-    isEligibleForRandom(node) &&
-    node.trackerType !== TrackerType.SUBTASK &&
-    node.children.length === 0
-  );
 }

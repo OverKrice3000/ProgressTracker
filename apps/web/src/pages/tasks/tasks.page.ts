@@ -31,11 +31,7 @@ import {
   ConfirmActionDialogData,
 } from '../../shared/ui/modal/confirm-action-dialog.component';
 import { AppButtonComponent } from '../../shared/ui/button/app-button.component';
-import {
-  collectImmediatePoolFromRoots,
-  collectLeafPoolFromForest,
-  pickRandom,
-} from '../../shared/lib/random-task';
+import { collectImmediatePoolFromRoots, pickRandom } from '../../shared/lib/random-task';
 import { TaskListViewComponent } from '../../widgets/task-list-view/ui/task-list-view.component';
 import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui/task-hierarchy-view.component';
 import {
@@ -133,27 +129,14 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
           <app-button size="m" (click)="openCreateModal()">{{ 'tasks.createTask' | transloco }}</app-button>
           <app-button appearance="outline-grayscale" size="m" (click)="openCreateSequenceModal()">{{ 'tasks.createSequence' | transloco }}</app-button>
         </div>
-        <div
-          *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
-          class="flex flex-wrap items-center gap-2"
+        <app-button
+          *ngIf="hasRandomChildPool()"
+          appearance="outline-grayscale"
+          size="m"
+          (click)="navigateToRandomChild()"
         >
-          <app-button
-            *ngIf="hasRandomChildPool()"
-            appearance="outline-grayscale"
-            size="m"
-            (click)="navigateToRandomChild()"
-          >
-            {{ 'tasks.randomChild' | transloco }}
-          </app-button>
-          <app-button
-            *ngIf="hasRandomLeafPool()"
-            appearance="outline-grayscale"
-            size="m"
-            (click)="navigateToRandomLeaf()"
-          >
-            {{ 'tasks.randomLeaf' | transloco }}
-          </app-button>
-        </div>
+          {{ 'tasks.randomChild' | transloco }}
+        </app-button>
       </div>
 
       <ng-container *ngIf="viewMode() === 'hierarchy'">
@@ -240,9 +223,7 @@ export class TasksPage implements OnInit {
   readonly recentBucketRows = computed(() => buildRecentBucketRows(this.filteredRecent()));
 
   readonly randomChildPool = computed(() => collectImmediatePoolFromRoots(this.fullTree()));
-  readonly randomLeafPool = computed(() => collectLeafPoolFromForest(this.fullTree()));
   readonly hasRandomChildPool = computed(() => this.randomChildPool().length > 0);
-  readonly hasRandomLeafPool = computed(() => this.randomLeafPool().length > 0);
 
   ngOnInit(): void {
     this.showArchived.set(localStorage.getItem(SHOW_ARCHIVED_STORAGE_KEY) === 'true');
@@ -481,13 +462,6 @@ export class TasksPage implements OnInit {
 
   navigateToRandomChild(): void {
     const pick = pickRandom(this.randomChildPool());
-    if (pick) {
-      void this.router.navigate(['/task', pick.id]);
-    }
-  }
-
-  navigateToRandomLeaf(): void {
-    const pick = pickRandom(this.randomLeafPool());
     if (pick) {
       void this.router.navigate(['/task', pick.id]);
     }
