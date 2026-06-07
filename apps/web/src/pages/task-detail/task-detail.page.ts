@@ -161,23 +161,26 @@ import {
 
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-3">
-          <app-button
+          <div
             *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
-            size="m"
-            (click)="openCreateChildModal()"
-            [disabled]="currentTask.isCompleted"
+            class="flex flex-wrap items-center gap-2"
           >
-            {{ 'taskDetail.createChild' | transloco }}
-          </app-button>
-          <app-button
-            *ngIf="!currentTask.isHidden && currentTask.trackerType === trackerType.SUBTASK"
-            appearance="outline-grayscale"
-            size="m"
-            (click)="openCreateChildSequenceModal()"
-            [disabled]="currentTask.isCompleted"
-          >
-            {{ 'taskDetail.createChildSequence' | transloco }}
-          </app-button>
+            <app-button
+              size="m"
+              (click)="openCreateChildModal()"
+              [disabled]="currentTask.isCompleted"
+            >
+              {{ 'taskDetail.createChild' | transloco }}
+            </app-button>
+            <app-button
+              appearance="outline-grayscale"
+              size="m"
+              (click)="openCreateChildSequenceModal()"
+              [disabled]="currentTask.isCompleted"
+            >
+              {{ 'taskDetail.createChildSequence' | transloco }}
+            </app-button>
+          </div>
           <app-button
             *ngIf="!currentTask.isHidden && currentTask.trackerType !== trackerType.SUBTASK && !currentTask.isCompleted"
             size="m"

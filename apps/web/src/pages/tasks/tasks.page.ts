@@ -129,8 +129,10 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <app-button size="m" (click)="openCreateModal()">{{ 'tasks.createTask' | transloco }}</app-button>
-        <app-button appearance="outline-grayscale" size="m" (click)="openCreateSequenceModal()">{{ 'tasks.createSequence' | transloco }}</app-button>
+        <div class="flex flex-wrap items-center gap-2">
+          <app-button size="m" (click)="openCreateModal()">{{ 'tasks.createTask' | transloco }}</app-button>
+          <app-button appearance="outline-grayscale" size="m" (click)="openCreateSequenceModal()">{{ 'tasks.createSequence' | transloco }}</app-button>
+        </div>
         <div
           *ngIf="hasRandomChildPool() || hasRandomLeafPool()"
           class="flex flex-wrap items-center gap-2"

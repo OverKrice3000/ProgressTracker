@@ -130,8 +130,9 @@
     "archived": "Archived",
     "tracking": "Tracking"
   },
-  "createSequence": {
-    "hint": "Use {n} as a placeholder — it becomes 1, 2, 3… in each task.",
+  "sequenceTask": {
+    "hint": "Type",
+    "hintSuffix": "in any field — it becomes 1, 2, 3… in each task.",
     "count": "Number of tasks",
     "countError": "Enter a number between 1 and 100.",
     "name": "Name",
@@ -143,10 +144,9 @@
     "targetDuration": "Target Duration",
     "hours": "Hours",
     "minutes": "Minutes",
-    "insertTokenHint": "Insert {n} at cursor",
-    "numberFieldError": "Enter a number or {n}.",
-    "minutesRangeError": "Minutes must be 0–59 or {n}.",
-    "minutesTokenTooMany": "With {n} in minutes and {{count}} tasks, tasks 60+ would exceed 59. Reduce count or use a fixed value.",
+    "numberFieldError": "Enter a valid number or the sequence placeholder.",
+    "minutesRangeError": "Minutes must be 0–59 or the sequence placeholder.",
+    "minutesTokenTooMany": "With the placeholder in minutes and {{count}} tasks, tasks 60+ would exceed 59. Reduce count or use a fixed value.",
     "durationMinRequired": "Duration must be at least 1 minute.",
     "cancel": "Cancel",
     "save": "Create {{count}} tasks"
