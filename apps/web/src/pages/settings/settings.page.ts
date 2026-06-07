@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, skip } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { UserSettingsApiService } from '../../features/user-settings/model/user-settings-api.service';
@@ -88,7 +88,6 @@ export class SettingsPage implements OnInit {
   constructor() {
     this.form.valueChanges
       .pipe(
-        skip(1),
         debounceTime(600),
         distinctUntilChanged(
           (a, b) =>
