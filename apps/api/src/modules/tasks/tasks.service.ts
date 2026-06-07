@@ -6,6 +6,13 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { CreateTaskSequenceDto } from './dto/create-task-sequence.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import {
+  assertInteger,
+  extractExpressionBlocks,
+  resolveNumericTemplate,
+  substituteExpressionBlocks,
+  validateArithmeticExpression,
+} from './lib/sequence-expression';
 
 export interface TaskTreeNode extends Task {
   children: TaskTreeNode[];
@@ -60,13 +67,15 @@ export class TasksService {
     if (parent && parent.trackerType !== TrackerType.SUBTASK)
       throw new BadRequestException('Only SUBTASK tracker can be parent');
 
+    this.validateSequenceDto(dto);
+
     const depth = parent ? parent.depth + 1 : 0;
 
     const tasks = await this.prisma.$transaction(
       Array.from({ length: dto.count }, (_, i) => {
         const n = i + 1;
-        const name = dto.name.replace(/\{n\}/g, String(n));
-        const description = dto.description?.replace(/\{n\}/g, String(n));
+        const name = substituteExpressionBlocks(dto.name, n);
+        const description = dto.description ? substituteExpressionBlocks(dto.description, n) : undefined;
         const trackerMetadata = this.buildSequenceTrackerMetadata(dto, n);
 
         return this.prisma.task.create({
@@ -87,10 +96,28 @@ export class TasksService {
     return tasks;
   }
 
-  private resolveToken(template: string | undefined, fallback: number, n: number): number {
-    if (template === undefined || template === null) return fallback;
-    if (template === '{n}') return n;
-    return parseInt(template, 10);
+  private validateSequenceDto(dto: CreateTaskSequenceDto): void {
+    for (const expr of extractExpressionBlocks(dto.name)) {
+      if (validateArithmeticExpression(expr)) {
+        throw new BadRequestException('Invalid expression in task name');
+      }
+    }
+
+    if (dto.description) {
+      for (const expr of extractExpressionBlocks(dto.description)) {
+        if (validateArithmeticExpression(expr)) {
+          throw new BadRequestException('Invalid expression in task description');
+        }
+      }
+    }
+
+    for (let n = 1; n <= dto.count; n++) {
+      try {
+        this.buildSequenceTrackerMetadata(dto, n);
+      } catch {
+        throw new BadRequestException('Invalid expression in tracker fields');
+      }
+    }
   }
 
   private buildSequenceTrackerMetadata(dto: CreateTaskSequenceDto, n: number): Record<string, unknown> {
@@ -98,15 +125,24 @@ export class TasksService {
       return { current: false, total: true };
     }
     if (dto.trackerType === TrackerType.TIME) {
-      const hours = this.resolveToken(dto.durationHours, 0, n);
-      const minutes = this.resolveToken(dto.durationMinutes, 1, n);
-      return { currentMinutes: 0, totalMinutes: hours * 60 + minutes };
+      const hours = assertInteger(resolveNumericTemplate(dto.durationHours ?? '0', n), 'Hours');
+      const minutes = assertInteger(resolveNumericTemplate(dto.durationMinutes ?? '1', n), 'Minutes');
+      if (minutes < 0 || minutes > 59) {
+        throw new BadRequestException('Minutes must be between 0 and 59');
+      }
+      const totalMinutes = hours * 60 + minutes;
+      if (totalMinutes < 1) {
+        throw new BadRequestException('Duration must be at least 1 minute');
+      }
+      return { currentMinutes: 0, totalMinutes };
     }
     if (dto.trackerType === TrackerType.SUBTASK) {
       return { childIds: [] };
     }
-    // NUMBER
-    const total = this.resolveToken(dto.total, 1, n);
+    const total = assertInteger(resolveNumericTemplate(dto.total ?? '1', n), 'Target');
+    if (total < 1) {
+      throw new BadRequestException('Target must be at least 1');
+    }
     return { current: 0, total };
   }
 

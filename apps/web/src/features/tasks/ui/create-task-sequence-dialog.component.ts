@@ -1,54 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TrackerType } from '@progress-tracker/contracts';
 import { POLYMORPHEUS_CONTEXT } from '@taiga-ui/polymorpheus';
 import type { TuiDialogContext } from '@taiga-ui/core/portals/dialog';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TaskBase } from '../../../entities/task/model/task.types';
 import { AppButtonComponent } from '../../../shared/ui/button/app-button.component';
 import { TasksApiService } from '../model/tasks-api.service';
 import { TRACKER_TYPES_IN_DISPLAY_ORDER } from '../../../entities/task/lib/tracker-display';
 import { TrackerTypeLabelPipe } from '../../../entities/task/ui/tracker-type-label.pipe';
+import { validateSequenceForm } from '../lib/sequence-expression';
 
 export interface CreateTaskSequenceDialogData {
   parent: TaskBase | null;
   onSuccess: () => void;
-}
-
-const SEQUENCE_TOKEN = '{n}';
-
-/** Accepts either the literal `{n}` token or a non-negative integer string. */
-function tokenOrIntValidator(min = 0, max?: number): ValidatorFn {
-  return (ctrl: AbstractControl): ValidationErrors | null => {
-    const v = String(ctrl.value ?? '').trim();
-    if (!v) return null;
-    if (v === SEQUENCE_TOKEN) return null;
-    const num = Number(v);
-    if (!Number.isInteger(num) || isNaN(num)) return { notNumber: true };
-    if (num < min) return { min: { min, actual: num } };
-    if (max !== undefined && num > max) return { max: { max, actual: num } };
-    return null;
-  };
-}
-
-/** Group-level: if durationMinutes is `{n}` and count > 59, substituted values 1–count will exceed 59. */
-function minutesTokenCountValidator(): ValidatorFn {
-  return (group: AbstractControl): ValidationErrors | null => {
-    const minutes = String(group.get('durationMinutes')?.value ?? '').trim();
-    const count = Number(group.get('count')?.value ?? 1);
-    if (minutes === SEQUENCE_TOKEN && count > 59) {
-      return { minutesTokenTooMany: { count } };
-    }
-    return null;
-  };
 }
 
 @Component({
@@ -60,8 +27,12 @@ function minutesTokenCountValidator(): ValidatorFn {
 
       <p class="rounded bg-slate-50 p-2.5 text-xs text-slate-500">
         {{ 'sequenceTask.hint' | transloco }}
-        <span class="font-mono font-medium text-slate-700">{{ sequenceToken }}</span>
-        {{ 'sequenceTask.hintSuffix' | transloco }}
+        <span class="font-mono font-medium text-slate-700">{{ exampleSimple }}</span>{{ 'sequenceTask.hintOr' | transloco }}
+        <span class="font-mono font-medium text-slate-700">{{ exampleMultiply }}</span>{{ 'sequenceTask.hintSuffix' | transloco }}
+      </p>
+
+      <p *ngIf="expressionError()" class="rounded border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+        {{ expressionErrorKey() | transloco }}
       </p>
 
       <label class="grid gap-1.5 text-sm">
@@ -108,16 +79,8 @@ function minutesTokenCountValidator(): ValidatorFn {
       <div *ngIf="isCounterType()" class="grid gap-1.5 text-sm">
         <label class="grid gap-1.5">
           <span class="font-medium text-slate-700">{{ 'sequenceTask.target' | transloco }}</span>
-          <input
-            type="text"
-            formControlName="total"
-            class="w-32 rounded border border-slate-300 p-2 font-mono"
-            [class.border-rose-400]="f.total.invalid && f.total.touched"
-          />
+          <input type="text" formControlName="total" class="w-32 rounded border border-slate-300 p-2 font-mono" />
         </label>
-        <p *ngIf="f.total.invalid && f.total.touched" class="text-xs text-rose-600">
-          {{ 'sequenceTask.numberFieldError' | transloco }}
-        </p>
       </div>
 
       <div *ngIf="isDurationType()" class="grid gap-2 text-sm">
@@ -125,42 +88,20 @@ function minutesTokenCountValidator(): ValidatorFn {
         <div class="grid grid-cols-2 gap-3">
           <label class="grid gap-1">
             <span class="text-slate-600">{{ 'sequenceTask.hours' | transloco }}</span>
-            <input
-              type="text"
-              formControlName="durationHours"
-              class="rounded border border-slate-300 p-2 font-mono"
-              [class.border-rose-400]="f.durationHours.invalid && f.durationHours.touched"
-            />
-            <p *ngIf="f.durationHours.invalid && f.durationHours.touched" class="text-xs text-rose-600">
-              {{ 'sequenceTask.numberFieldError' | transloco }}
-            </p>
+            <input type="text" formControlName="durationHours" class="rounded border border-slate-300 p-2 font-mono" />
           </label>
           <label class="grid gap-1">
             <span class="text-slate-600">{{ 'sequenceTask.minutes' | transloco }}</span>
-            <input
-              type="text"
-              formControlName="durationMinutes"
-              class="rounded border border-slate-300 p-2 font-mono"
-              [class.border-rose-400]="minutesTokenError || (f.durationMinutes.invalid && f.durationMinutes.touched)"
-            />
-            <p *ngIf="f.durationMinutes.invalid && f.durationMinutes.touched" class="text-xs text-rose-600">
-              {{ 'sequenceTask.minutesRangeError' | transloco }}
-            </p>
-            <p *ngIf="minutesTokenError" class="text-xs text-rose-600">
-              {{ 'sequenceTask.minutesTokenTooMany' | transloco: { count: f.count.value } }}
-            </p>
+            <input type="text" formControlName="durationMinutes" class="rounded border border-slate-300 p-2 font-mono" />
           </label>
         </div>
-        <p *ngIf="durationTooShort" class="text-xs text-rose-600">
-          {{ 'sequenceTask.durationMinRequired' | transloco }}
-        </p>
       </div>
 
       <div class="flex justify-end gap-2">
         <app-button appearance="outline-grayscale" type="button" (click)="cancel()">
           {{ 'sequenceTask.cancel' | transloco }}
         </app-button>
-        <app-button type="submit" [disabled]="saving">
+        <app-button type="submit" [disabled]="saveDisabled()">
           {{ 'sequenceTask.save' | transloco: { count: f.count.value } }}
         </app-button>
       </div>
@@ -174,38 +115,44 @@ export class CreateTaskSequenceDialogComponent {
   private readonly context = inject(POLYMORPHEUS_CONTEXT) as TuiDialogContext<void, CreateTaskSequenceDialogData>;
 
   readonly trackerTypes = TRACKER_TYPES_IN_DISPLAY_ORDER;
-  readonly sequenceToken = SEQUENCE_TOKEN;
+  readonly exampleSimple = '{n}';
+  readonly exampleMultiply = '{n*2}';
+  readonly expressionError = signal<string | null>(null);
   saving = false;
 
-  readonly form = this.fb.nonNullable.group(
-    {
-      count: [2, [Validators.required, Validators.min(1), Validators.max(100)]],
-      name: ['', Validators.required],
-      description: [''],
-      trackerType: [TrackerType.SUBTASK as TrackerType, Validators.required],
-      total: ['1', [tokenOrIntValidator(1)]],
-      durationHours: ['0', [tokenOrIntValidator(0)]],
-      durationMinutes: ['1', [tokenOrIntValidator(0, 59)]],
-    },
-    { validators: minutesTokenCountValidator() },
-  );
+  readonly form = this.fb.nonNullable.group({
+    count: [2, [Validators.required, Validators.min(1), Validators.max(100)]],
+    name: ['', Validators.required],
+    description: [''],
+    trackerType: [TrackerType.SUBTASK as TrackerType, Validators.required],
+    total: ['1'],
+    durationHours: ['0'],
+    durationMinutes: ['1'],
+  });
+
+  constructor() {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.revalidateExpressions());
+    this.revalidateExpressions();
+  }
 
   get f() {
     return this.form.controls;
   }
 
-  get minutesTokenError(): boolean {
-    return !!this.form.errors?.['minutesTokenTooMany'];
+  expressionErrorKey(): string {
+    const err = this.expressionError();
+    if (!err) return '';
+    const keys: Record<string, string> = {
+      expressionInvalid: 'sequenceTask.expressionInvalid',
+      numberOutOfRange: 'sequenceTask.numberOutOfRange',
+      minutesOutOfRange: 'sequenceTask.minutesOutOfRange',
+      durationTooShort: 'sequenceTask.durationMinRequired',
+    };
+    return keys[err] ?? 'sequenceTask.expressionInvalid';
   }
 
-  get durationTooShort(): boolean {
-    if (!this.isDurationType()) return false;
-    const h = this.f.durationHours.value;
-    const m = this.f.durationMinutes.value;
-    if (h === SEQUENCE_TOKEN || m === SEQUENCE_TOKEN) return false;
-    const hours = parseInt(h, 10) || 0;
-    const minutes = parseInt(m, 10) || 0;
-    return hours * 60 + minutes < 1;
+  saveDisabled(): boolean {
+    return this.saving || this.form.invalid || this.expressionError() !== null;
   }
 
   isCounterType(): boolean {
@@ -216,13 +163,29 @@ export class CreateTaskSequenceDialogComponent {
     return this.f.trackerType.value === TrackerType.TIME;
   }
 
+  private revalidateExpressions(): void {
+    const raw = this.form.getRawValue();
+    this.expressionError.set(
+      validateSequenceForm({
+        name: raw.name,
+        description: raw.description,
+        trackerType: raw.trackerType,
+        total: raw.total,
+        durationHours: raw.durationHours,
+        durationMinutes: raw.durationMinutes,
+        count: raw.count,
+      }),
+    );
+  }
+
   cancel(): void {
     this.context.completeWith();
   }
 
   submit(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.durationTooShort || this.minutesTokenError || this.saving) return;
+    this.revalidateExpressions();
+    if (this.saveDisabled()) return;
 
     const { count, name, description, trackerType, total, durationHours, durationMinutes } =
       this.form.getRawValue();
