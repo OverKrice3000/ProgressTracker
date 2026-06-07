@@ -55,7 +55,7 @@ export interface CreateTaskSequenceDialogData {
           id="seq-name"
           type="text"
           formControlName="name"
-          [placeholder]="'sequenceTask.namePlaceholder' | transloco"
+          [placeholder]="'createTask.namePlaceholder' | transloco"
           autocomplete="off"
           class="w-full rounded border border-slate-300 p-2 text-sm"
         />

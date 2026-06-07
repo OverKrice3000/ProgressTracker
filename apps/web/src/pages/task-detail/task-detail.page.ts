@@ -465,16 +465,17 @@ export class TaskDetailPage implements OnInit {
           return;
         }
         this.tasksApi.delete(task.id).subscribe(() => {
-          const isStillVisible = !task.isHidden;
           if (this.activeTrackingTaskId() === task.id) {
             this.trackingStore.loadCurrent();
           }
-          if (isStillVisible) {
+          const currentTask = this.task();
+          if (currentTask && task.id === currentTask.id) {
             void this.router.navigate(['/tasks']);
             return;
           }
-          this.loadTask(task.id);
-          this.loadSubtaskTree(task.id);
+          if (currentTask) {
+            this.loadSubtaskTree(currentTask.id);
+          }
         });
       });
   }

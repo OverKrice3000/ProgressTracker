@@ -137,7 +137,6 @@
     "count": "Number of tasks",
     "countError": "Enter a number between 1 and 100.",
     "name": "Name",
-    "namePlaceholder": "e.g. Episode {n} or Lesson {n*2}",
     "nameRequired": "Name is required.",
     "description": "Description",
     "taskType": "Task type",
