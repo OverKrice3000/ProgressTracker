@@ -20,6 +20,7 @@ import {
   ConfirmActionDialogData,
 } from '../../../shared/ui/modal/confirm-action-dialog.component';
 import { formatYmdAsReadable, getLocalDayRangeIso, localNoonIsoForYmd } from '../../../shared/lib/local-day-bounds';
+import { formatHoursMinutesShort } from '../../../shared/lib/format-hours-minutes';
 
 export interface TrackProgressDialogData {
   task: TaskBase;
@@ -72,24 +73,50 @@ export interface TrackProgressDialogData {
 
       <ng-container [ngSwitch]="currentTask.trackerType">
         <label *ngSwitchCase="trackerType.NUMBER" class="grid gap-2 text-sm">
-          {{ 'trackProgress.newProgressCounter' | transloco }}
+          <span class="font-medium text-slate-800">
+            {{ 'trackProgress.newProgressCounter' | transloco }}
+            <span class="font-normal text-slate-500">
+              ({{
+                'trackProgress.progressRange'
+                  | transloco
+                    : {
+                        current: counterMin(currentTask),
+                        max: counterMax(currentTask),
+                      }
+              }})
+            </span>
+          </span>
           <input
             type="number"
             formControlName="newCurrentNumber"
-            min="0"
+            [min]="counterMin(currentTask)"
+            [max]="counterMax(currentTask)"
             class="rounded border border-slate-300 p-2"
           />
         </label>
 
         <div *ngSwitchCase="trackerType.TIME" class="grid gap-2 text-sm">
-          <span class="font-medium text-slate-800">{{ 'trackProgress.newProgressDuration' | transloco }}</span>
+          <span class="font-medium text-slate-800">
+            {{ 'trackProgress.newProgressDuration' | transloco }}
+            <span class="font-normal text-slate-500">
+              ({{
+                'trackProgress.progressRange'
+                  | transloco
+                    : {
+                        current: formatDurationMinutes(timeMinMinutes(currentTask)),
+                        max: formatDurationMinutes(timeMaxMinutes(currentTask)),
+                      }
+              }})
+            </span>
+          </span>
           <div class="grid grid-cols-2 gap-3">
             <label class="grid gap-1">
               {{ 'trackProgress.hours' | transloco }}
               <input
                 type="number"
                 formControlName="newCurrentHours"
-                min="0"
+                [min]="timeMinHours(currentTask)"
+                [max]="timeMaxHours(currentTask)"
                 class="rounded border border-slate-300 p-2"
               />
             </label>
@@ -98,8 +125,8 @@ export interface TrackProgressDialogData {
               <input
                 type="number"
                 formControlName="newCurrentMinutes"
-                min="0"
-                max="59"
+                [min]="timeMinMinutesForHours(currentTask, logForm.controls.newCurrentHours.value)"
+                [max]="timeMaxMinutesForHours(currentTask, logForm.controls.newCurrentHours.value)"
                 class="rounded border border-slate-300 p-2"
               />
             </label>
@@ -273,10 +300,62 @@ export class TrackProgressDialogComponent implements OnInit {
       });
   }
 
+  readonly formatDurationMinutes = formatHoursMinutesShort;
+
   private formatElapsedAsHoursMinutes(totalMinutes: number): string {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h ${m}m`;
+  }
+
+  counterMin(task: TaskBase): number {
+    return Number((task.trackerMetadata as Record<string, unknown>)['current'] ?? 0);
+  }
+
+  counterMax(task: TaskBase): number {
+    return Number((task.trackerMetadata as Record<string, unknown>)['total'] ?? 1);
+  }
+
+  timeMinMinutes(task: TaskBase): number {
+    return Number((task.trackerMetadata as Record<string, unknown>)['currentMinutes'] ?? 0);
+  }
+
+  timeMaxMinutes(task: TaskBase): number {
+    return Number((task.trackerMetadata as Record<string, unknown>)['totalMinutes'] ?? 1);
+  }
+
+  timeMinHours(task: TaskBase): number {
+    return Math.floor(this.timeMinMinutes(task) / 60);
+  }
+
+  timeMaxHours(task: TaskBase): number {
+    return Math.floor(this.timeMaxMinutes(task) / 60);
+  }
+
+  timeMinMinutesForHours(task: TaskBase, hours: number): number {
+    const cur = this.timeMinMinutes(task);
+    const h = Math.floor(Number(hours) || 0);
+    const minH = Math.floor(cur / 60);
+    if (h < minH) {
+      return 0;
+    }
+    if (h === minH) {
+      return cur % 60;
+    }
+    return 0;
+  }
+
+  timeMaxMinutesForHours(task: TaskBase, hours: number): number {
+    const total = this.timeMaxMinutes(task);
+    const h = Math.floor(Number(hours) || 0);
+    const maxH = Math.floor(total / 60);
+    if (h > maxH) {
+      return 0;
+    }
+    if (h === maxH) {
+      return total % 60;
+    }
+    return 59;
   }
 
   private recomputeLogModalState(task: TaskBase): void {
@@ -338,28 +417,36 @@ export class TrackProgressDialogComponent implements OnInit {
     if (task.trackerType === TrackerType.NUMBER) {
       const next = Number(raw.newCurrentNumber);
       if (Number.isNaN(next)) {
-        return 'Enter a valid number.';
+        return this.transloco.translate('trackProgress.invalidNumber');
       }
       const prev = Number(m['current'] ?? 0);
+      const total = Number(m['total'] ?? 1);
       if (next < prev) {
-        return 'New value cannot be lower than current.';
+        return this.transloco.translate('trackProgress.valueTooLow');
+      }
+      if (next > total) {
+        return this.transloco.translate('trackProgress.valueTooHigh');
       }
     }
     if (task.trackerType === TrackerType.TIME) {
       const next = combineHoursMinutes(raw.newCurrentHours, raw.newCurrentMinutes);
       if (Number.isNaN(next)) {
-        return 'Enter a valid duration.';
+        return this.transloco.translate('trackProgress.invalidDuration');
       }
       const prev = Number(m['currentMinutes'] ?? 0);
+      const total = Number(m['totalMinutes'] ?? 1);
       if (next < prev) {
-        return 'New value cannot be lower than current.';
+        return this.transloco.translate('trackProgress.valueTooLow');
+      }
+      if (next > total) {
+        return this.transloco.translate('trackProgress.valueTooHigh');
       }
     }
     if (task.trackerType === TrackerType.BOOLEAN) {
       const prev = Boolean(m['current']);
       const next = raw.markComplete;
       if (prev && !next) {
-        return 'New value cannot be lower than current.';
+        return this.transloco.translate('trackProgress.valueTooLow');
       }
     }
     return null;
