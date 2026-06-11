@@ -149,40 +149,158 @@ export const RECENT_BUCKET_DEFS: { key: RecentBucket['key']; label: string }[] =
   { key: 'older', label: 'tasks.bucketOlder' },
 ];
 
+export type RecentTask = TaskBase & { lastTrackedAt: string };
+
+export interface BuildRecentBucketRowsOptions {
+  /** Resolves a parent task when grouping siblings in a bucket. */
+  resolveParent?: (parentId: string) => TaskBase | null;
+  searchQuery?: string;
+}
+
+function recentBucketKeyForTimestamp(lastTrackedAt: string, s0: number, tWeek: number, tMonth: number): RecentBucket['key'] {
+  const d = new Date(lastTrackedAt).getTime();
+  if (d >= s0) {
+    return 'today';
+  }
+  if (d >= tWeek) {
+    return 'week';
+  }
+  if (d >= tMonth) {
+    return 'month';
+  }
+  return 'older';
+}
+
+function taskMatchesSearch(task: TaskBase, q: string): boolean {
+  const trimmed = q.trim().toLowerCase();
+  if (!trimmed) {
+    return true;
+  }
+  return task.name.toLowerCase().includes(trimmed);
+}
+
+function compareTasksForRecentSort(a: TaskBase, b: TaskBase): number {
+  const tc = compareTrackerTypeForSort(a.trackerType, b.trackerType);
+  if (tc !== 0) {
+    return tc;
+  }
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+}
+
+const PARENT_GROUP_MIN_SIZE = 3;
+
 /**
- * Splits into non-overlapping time buckets; omits empty buckets. Sorts each bucket: type then name.
+ * Builds display rows for one time bucket: hides completed leaves, groups siblings by parent.
+ * When 3+ siblings (including completed) share a parent, the parent is listed first.
+ * Completed siblings are never listed; when 3+ are completed, the parent represents them.
+ */
+function buildRecentBucketDisplayTasks(
+  bucketTasks: RecentTask[],
+  resolveParent: (parentId: string) => TaskBase | null,
+  searchQuery: string,
+): RecentTask[] {
+  const byParent = new Map<string, RecentTask[]>();
+  const roots: RecentTask[] = [];
+
+  for (const t of bucketTasks) {
+    if (!t.parentId) {
+      roots.push(t);
+      continue;
+    }
+    const list = byParent.get(t.parentId) ?? [];
+    list.push(t);
+    byParent.set(t.parentId, list);
+  }
+
+  const segments: RecentTask[][] = [];
+  const parentIds = [...byParent.keys()].sort((a, b) => {
+    const pa = resolveParent(a);
+    const pb = resolveParent(b);
+    return (pa?.name ?? '').localeCompare(pb?.name ?? '', undefined, { sensitivity: 'base', numeric: true });
+  });
+
+  for (const parentId of parentIds) {
+    const group = byParent.get(parentId)!;
+    const totalCount = group.length;
+    const completedCount = group.filter((t) => t.isCompleted).length;
+    const showParent = totalCount >= PARENT_GROUP_MIN_SIZE;
+    const parent = showParent ? resolveParent(parentId) : null;
+
+    let activeTasks = group.filter((t) => !t.isCompleted);
+    if (searchQuery.trim()) {
+      const parentMatches = parent ? taskMatchesSearch(parent, searchQuery) : false;
+      const anyChildMatches = group.some((t) => taskMatchesSearch(t, searchQuery));
+      if (!parentMatches && !anyChildMatches) {
+        continue;
+      }
+      if (!parentMatches) {
+        activeTasks = activeTasks.filter((t) => taskMatchesSearch(t, searchQuery));
+      }
+    }
+
+    const segment: RecentTask[] = [];
+    if (
+      parent &&
+      showParent &&
+      (activeTasks.length > 0 || completedCount >= PARENT_GROUP_MIN_SIZE)
+    ) {
+      const latestInGroup = group.reduce(
+        (max, t) => (t.lastTrackedAt > max ? t.lastTrackedAt : max),
+        group[0].lastTrackedAt,
+      );
+      segment.push({ ...parent, lastTrackedAt: latestInGroup });
+    }
+    if (activeTasks.length > 0) {
+      segment.push(...(sortTasksByTypeThenName(activeTasks) as RecentTask[]));
+    }
+    if (segment.length > 0) {
+      segments.push(segment);
+    }
+  }
+
+  let rootActive = roots.filter((t) => !t.isCompleted);
+  if (searchQuery.trim()) {
+    rootActive = rootActive.filter((t) => taskMatchesSearch(t, searchQuery));
+  }
+  for (const root of sortTasksByTypeThenName(rootActive) as RecentTask[]) {
+    segments.push([root]);
+  }
+
+  segments.sort((a, b) => compareTasksForRecentSort(a[0], b[0]));
+  return segments.flat();
+}
+
+/**
+ * Splits into non-overlapping time buckets; omits empty buckets.
+ * Completed leaf tasks are never shown; parent rows may appear when sibling grouping rules apply.
  * Buckets: today, [start-7d, start), [start-30d, start-7d), earlier than start-30d.
  */
 export function buildRecentBucketRows(
-  tasks: (TaskBase & { lastTrackedAt: string })[],
+  tasks: RecentTask[],
+  options: BuildRecentBucketRowsOptions = {},
   now: Date = new Date(),
 ): RecentBucket[] {
   const s0 = startOfLocalDay(now);
   const tWeek = s0 - 7 * MS_PER_DAY;
   const tMonth = s0 - 30 * MS_PER_DAY;
-  type T = TaskBase & { lastTrackedAt: string };
-  const map: Record<RecentBucket['key'], T[]> = {
+  const map: Record<RecentBucket['key'], RecentTask[]> = {
     today: [],
     week: [],
     month: [],
     older: [],
   };
   for (const t of tasks) {
-    const d = new Date(t.lastTrackedAt).getTime();
-    if (d >= s0) {
-      map.today.push(t);
-    } else if (d < s0 && d >= tWeek) {
-      map.week.push(t);
-    } else if (d < tWeek && d >= tMonth) {
-      map.month.push(t);
-    } else {
-      map.older.push(t);
-    }
+    const key = recentBucketKeyForTimestamp(t.lastTrackedAt, s0, tWeek, tMonth);
+    map[key].push(t);
   }
-  (['today', 'week', 'month', 'older'] as const).forEach((k) => {
-    map[k] = sortTasksByTypeThenName(map[k]) as T[];
-  });
-  return RECENT_BUCKET_DEFS.map((def) => ({ ...def, tasks: map[def.key] })).filter((b) => b.tasks.length > 0);
+
+  const resolveParent = options.resolveParent ?? (() => null);
+  const searchQuery = options.searchQuery ?? '';
+
+  return RECENT_BUCKET_DEFS.map((def) => ({
+    ...def,
+    tasks: buildRecentBucketDisplayTasks(map[def.key], resolveParent, searchQuery),
+  })).filter((b) => b.tasks.length > 0);
 }
 
 export function filterTasksBySearch(tasks: TaskBase[], q: string): TaskBase[] {
@@ -190,6 +308,6 @@ export function filterTasksBySearch(tasks: TaskBase[], q: string): TaskBase[] {
   if (!trimmed) {
     return tasks;
   }
-  return tasks.filter((t) => t.name.toLowerCase().includes(trimmed));
+  return tasks.filter((t) => taskMatchesSearch(t, q));
 }
 

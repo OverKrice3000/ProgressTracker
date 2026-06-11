@@ -37,9 +37,9 @@ import { TaskHierarchyViewComponent } from '../../widgets/task-hierarchy-view/ui
 import {
   applyDisplaySort,
   buildRecentBucketRows,
-  filterTasksBySearch,
   filterTreeByCompletionAndTracker,
   filterTreeBySearch,
+  findNodeInTree,
 } from './task-tree.utils';
 
 const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
@@ -157,7 +157,7 @@ const SHOW_ARCHIVED_STORAGE_KEY = 'tasks.showArchived';
       </ng-container>
 
       <ng-container *ngIf="viewMode() === 'recent'">
-        <p *ngIf="filteredRecent().length === 0" class="text-sm text-slate-500">
+        <p *ngIf="recentBucketRows().length === 0" class="text-sm text-slate-500">
           {{ 'tasks.emptyRecent' | transloco }}
         </p>
         <div *ngIf="recentBucketRows().length > 0" class="space-y-8">
@@ -215,12 +215,19 @@ export class TasksPage implements OnInit {
     return applyDisplaySort(next);
   });
 
-  readonly filteredRecent = computed((): (TaskBase & { lastTrackedAt: string })[] => {
-    const withLogs = this.recentTasks() as (TaskBase & { lastTrackedAt: string })[];
-    return filterTasksBySearch(withLogs, this.searchQuery()) as (TaskBase & { lastTrackedAt: string })[];
-  });
-
-  readonly recentBucketRows = computed(() => buildRecentBucketRows(this.filteredRecent()));
+  readonly recentBucketRows = computed(() =>
+    buildRecentBucketRows(this.recentTasks() as (TaskBase & { lastTrackedAt: string })[], {
+      resolveParent: (parentId) => {
+        const node = findNodeInTree(this.fullTree(), parentId);
+        if (!node) {
+          return null;
+        }
+        const { children: _children, ...base } = node;
+        return base;
+      },
+      searchQuery: this.searchQuery(),
+    }),
+  );
 
   readonly randomChildPool = computed(() => collectImmediatePoolFromRoots(this.fullTree()));
   readonly hasRandomChildPool = computed(() => this.randomChildPool().length > 0);
@@ -279,9 +286,6 @@ export class TasksPage implements OnInit {
 
   setCompletionFilter(event: Event): void {
     this.completionFilter.set((event.target as HTMLSelectElement).value as never);
-    if (this.viewMode() === 'recent') {
-      this.loadRecent();
-    }
   }
 
   setTrackerFilter(event: Event): void {
@@ -478,10 +482,8 @@ export class TasksPage implements OnInit {
   }
 
   private loadRecent(): void {
-    const c = this.completionFilter();
     this.tasksApi
       .getRecentLeaves({
-        isCompleted: c === 'all' ? undefined : c === 'completed',
         trackerType: this.trackerFilter() ? (this.trackerFilter() as TrackerType) : undefined,
         includeHidden: this.showArchived(),
       })
