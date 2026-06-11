@@ -106,8 +106,18 @@ export function startOfLocalDay(d: Date): number {
   return t.getTime();
 }
 
-/** Folders (non-empty children) first, then tracker type, then name A–Z. Applied recursively. */
+/** In-progress first, then folders, tracker type, name A–Z. Applied recursively. */
+function compareCompletionStatus(a: TaskBase, b: TaskBase): number {
+  const aCompleted = a.isCompleted ? 1 : 0;
+  const bCompleted = b.isCompleted ? 1 : 0;
+  return aCompleted - bCompleted;
+}
+
 function compareSiblings(a: TaskTreeNode, b: TaskTreeNode): number {
+  const completion = compareCompletionStatus(a, b);
+  if (completion !== 0) {
+    return completion;
+  }
   const aFolder = a.children.length > 0 ? 1 : 0;
   const bFolder = b.children.length > 0 ? 1 : 0;
   if (aFolder !== bFolder) {
@@ -128,6 +138,10 @@ export function applyDisplaySort(nodes: TaskTreeNode[]): TaskTreeNode[] {
 
 export function sortTasksByTypeThenName(tasks: TaskBase[]): TaskBase[] {
   return [...tasks].sort((a, b) => {
+    const completion = compareCompletionStatus(a, b);
+    if (completion !== 0) {
+      return completion;
+    }
     const tc = compareTrackerTypeForSort(a.trackerType, b.trackerType);
     if (tc !== 0) {
       return tc;
@@ -180,6 +194,10 @@ function taskMatchesSearch(task: TaskBase, q: string): boolean {
 }
 
 function compareTasksForRecentSort(a: TaskBase, b: TaskBase): number {
+  const completion = compareCompletionStatus(a, b);
+  if (completion !== 0) {
+    return completion;
+  }
   const tc = compareTrackerTypeForSort(a.trackerType, b.trackerType);
   if (tc !== 0) {
     return tc;
