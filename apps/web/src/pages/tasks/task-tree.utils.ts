@@ -1,5 +1,6 @@
 import { TrackerType } from '@progress-tracker/contracts';
 import { compareTrackerTypeForSort } from '../../entities/task/lib/tracker-display';
+import { isNodeProgressComplete } from '../../entities/task/lib/task-list-progress';
 import { TaskBase, TaskTreeNode } from '../../entities/task/model/task.types';
 
 /** Returns the first node in the task tree (depth-first) whose id matches. */
@@ -107,9 +108,20 @@ export function startOfLocalDay(d: Date): number {
 }
 
 /** In-progress first, then folders, tracker type, name A–Z. Applied recursively. */
+function isCompletedForSort(task: TaskBase): boolean {
+  if (task.isCompleted) {
+    return true;
+  }
+  const node = task as TaskTreeNode;
+  if (node.children !== undefined) {
+    return isNodeProgressComplete(node);
+  }
+  return isNodeProgressComplete(task);
+}
+
 function compareCompletionStatus(a: TaskBase, b: TaskBase): number {
-  const aCompleted = a.isCompleted ? 1 : 0;
-  const bCompleted = b.isCompleted ? 1 : 0;
+  const aCompleted = isCompletedForSort(a) ? 1 : 0;
+  const bCompleted = isCompletedForSort(b) ? 1 : 0;
   return aCompleted - bCompleted;
 }
 
